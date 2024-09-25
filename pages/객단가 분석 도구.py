@@ -25,7 +25,7 @@ if uploaded_file is not None:
     st.write("### 회원과 비회원의 주문 비중 비교")
 
     # '회원여부' 컬럼 생성
-    data['회원여부'] = data['주문자 아이디'].apply(lambda x: '비회원' if pd.isna(x) or str(x).strip() == '' else '회원')
+    data['회원여부'] = data['주문자 아이디'].apply(lambda x: 'Guest' if pd.isna(x) or str(x).strip() == '' else 'Member')
 
     # 주문 건수 계산
     member_counts = data['회원여부'].value_counts()
@@ -45,7 +45,7 @@ if uploaded_file is not None:
     fig1, ax1 = plt.subplots()
     ax1.pie(member_counts.values, labels=member_counts.index, autopct='%1.1f%%', startangle=90)
     ax1.axis('equal')
-    ax1.set_title('회원과 비회원의 주문 비중 (파이 차트)')
+    ax1.set_title('The ratio of orders between members and guest')
 
     st.pyplot(fig1)
 
