@@ -45,7 +45,7 @@ if uploaded_file is not None:
     fig1, ax1 = plt.subplots()
     ax1.pie(member_counts.values, labels=member_counts.index, autopct='%1.1f%%', startangle=90)
     ax1.axis('equal')
-    ax1.set_title('The ratio of orders between members and guest')
+    ax1.set_title('The ratio of orders')
 
     st.pyplot(fig1)
 
