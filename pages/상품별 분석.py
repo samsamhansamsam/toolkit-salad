@@ -42,42 +42,63 @@ def run_product_analysis():
         # 상품 목록 생성 (연관 구매 횟수 순으로 정렬)
         product_list = [product for product, _ in product_related_counts.most_common()]
 
+        # 상품명과 옵션을 조합하여 드롭다운에 표시할 텍스트 생성
+        product_display_names = {
+            identifier: f"{row['상품명']} ({row['상품 옵션']})"
+            for identifier, row in data.set_index('상품_식별자')[['상품명', '상품 옵션']].iterrows()
+        }
+
+        # 드롭다운 메뉴에 표시할 리스트 생성
+        dropdown_options = [product_display_names[product] for product in product_list]
+
         # 상품 선택 위젯
-        selected_product = st.selectbox("상품을 선택하세요:", product_list)
+        selected_product_display_name = st.selectbox("상품을 선택하세요:", dropdown_options)
+
+        # 선택된 상품의 식별자를 찾기
+        selected_product_identifier = next(
+            identifier for identifier, display_name in product_display_names.items()
+            if display_name == selected_product_display_name
+        )
 
         # 함께 구매된 상품 찾기 함수
         def find_related_products(product_identifier):
-            related = [(prod, count) for (prod1, prod2), count in combination_counts.items()
-                       if prod1 == product_identifier or prod2 == product_identifier]
-            related = [(prod1 if prod2 == product_identifier else prod2, count) for prod1, prod2, count in related]
+            related = []
+            for (prod1, prod2), count in combination_counts.items():
+                if prod1 == product_identifier:
+                    related.append((prod2, count))
+                elif prod2 == product_identifier:
+                    related.append((prod1, count))
             return sorted(related, key=lambda x: x[1], reverse=True)
 
         # 선택된 상품과 함께 구매된 상품 표시
-        if selected_product:
-            related_products = find_related_products(selected_product)
-            st.write(f"{selected_product}와(과) 함께 구매된 상품:")
+        if selected_product_identifier:
+            related_products = find_related_products(selected_product_identifier)
+            st.write(f"{selected_product_display_name}와(과) 함께 구매된 상품:")
             
-            # 데이터프레임 생성
-            df_related = pd.DataFrame(related_products, columns=['상품_식별자', '함께 구매된 횟수'])
-            
-            # 상품 코드와 옵션 분리
-            df_related[['상품 코드', '상품 옵션']] = df_related['상품_식별자'].str.split('_', n=1, expand=True)
-            
-            # 상품명 추가
-            df_related = df_related.merge(data[['상품 코드', '상품명']].drop_duplicates(), on='상품 코드', how='left')
-            
-            # 상위 10개 상품만 표시
-            df_display = df_related[['상품명', '상품 옵션', '함께 구매된 횟수']].head(10)
-            st.dataframe(df_display)
+            if related_products:
+                # 데이터프레임 생성
+                df_related = pd.DataFrame(related_products, columns=['상품_식별자', '함께 구매된 횟수'])
+                
+                # 상품 코드와 옵션 분리
+                df_related[['상품 코드', '상품 옵션']] = df_related['상품_식별자'].str.split('_', n=1, expand=True)
+                
+                # 상품명 추가
+                df_related = df_related.merge(data[['상품 코드', '상품명']].drop_duplicates(), on='상품 코드', how='left')
+                
+                # 상위 10개 상품만 표시
+                df_display = df_related[['상품명', '상품 옵션', '함께 구매된 횟수']].head(10)
+                st.dataframe(df_display)
 
-            # 막대 그래프로 시각화
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.bar(df_display['상품명'] + ' (' + df_display['상품 옵션'] + ')', df_display['함께 구매된 횟수'])
-            ax.set_xticklabels(df_display['상품명'] + ' (' + df_display['상품 옵션'] + ')', rotation=45, ha='right')
-            ax.set_xlabel('상품명 (옵션)')
-            ax.set_ylabel('함께 구매된 횟수')
-            ax.set_title(f'{selected_product}와(과) 함께 구매된 상위 10개 상품')
-            st.pyplot(fig)
+                # 막대 그래프로 시각화
+                fig, ax = plt.subplots(figsize=(10, 6))
+                ax.bar(df_display['상품명'] + ' (' + df_display['상품 옵션'] + ')', df_display['함께 구매된 횟수'])
+                ax.set_xticklabels(df_display['상품명'] + ' (' + df_display['상품 옵션'] + ')', rotation=45, ha='right')
+                ax.set_xlabel('상품명 (옵션)')
+                ax.set_ylabel('함께 구매된 횟수')
+                ax.set_title(f'{selected_product_display_name}와(과) 함께 구매된 상위 10개 상품')
+                st.pyplot(fig)
+            else:
+                st.write("이 상품과 함께 구매된 다른 상품이 없습니다.")
 
     else:
         st.write("CSV 파일을 업로드해주세요.")
