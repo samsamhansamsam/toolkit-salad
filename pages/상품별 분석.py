@@ -32,7 +32,7 @@ def run_product_analysis():
         order_groups = data.groupby('주문번호')['상품_식별자'].apply(list).reset_index()
 
         def get_product_combinations(products):
-            return list(itertools.combinations(set(products), 2))
+            return list(itertools.combinations(products, 2))
 
         all_combinations = []
         for _, row in order_groups.iterrows():
@@ -58,14 +58,19 @@ def run_product_analysis():
 
         selected_product_identifier = next(
             (identifier for identifier, display_name in product_display_names.items()
-             if display_name == selected_product_display_name),
+            if display_name == selected_product_display_name),
             selected_product_display_name
         )
 
         def find_related_products(product_identifier):
-            related = [(prod, count) for (prod1, prod2), count in combination_counts.items()
-                       if prod1 == product_identifier or prod2 == product_identifier]
-            related = [(prod1 if prod2 == product_identifier else prod2, count) for prod1, prod2, count in related]
+            related = []
+            for item, count in combination_counts.items():
+                if isinstance(item, tuple) and len(item) == 2:
+                    prod1, prod2 = item
+                    if prod1 == product_identifier:
+                        related.append((prod2, count))
+                    elif prod2 == product_identifier:
+                        related.append((prod1, count))
             return sorted(related, key=lambda x: x[1], reverse=True)
 
         if selected_product_identifier:
