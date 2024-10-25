@@ -30,9 +30,14 @@ def run_product_analysis():
 
         combination_counts = Counter(all_combinations)
 
-        # 상품 목록 생성 (판매량 순으로 정렬)
-        product_sales = data['상품명'].value_counts()
-        product_list = product_sales.index.tolist()
+        # 각 상품과 연관된 구매 횟수 계산
+        product_related_counts = Counter()
+        for (prod1, prod2), count in combination_counts.items():
+            product_related_counts[prod1] += count
+            product_related_counts[prod2] += count
+
+        # 상품 목록 생성 (연관 구매 횟수 순으로 정렬)
+        product_list = [product for product, _ in product_related_counts.most_common()]
 
         # 상품 선택 위젯
         selected_product = st.selectbox("상품을 선택하세요:", product_list)
