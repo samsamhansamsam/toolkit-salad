@@ -1,30 +1,13 @@
 import streamlit as st
 import pandas as pd
-import matplotlib
 import matplotlib.pyplot as plt
 from collections import Counter
 import itertools
-import os
-import matplotlib.font_manager as fm  # 폰트 관련 용도 as fm
-
-@st.cache_data
-def fontRegistered():
-    font_dirs = [os.getcwd() + '/customFonts']
-    font_files = fm.findSystemFonts(fontpaths=font_dirs)
-
-    for font_file in font_files:
-        fm.fontManager.addfont(font_file)
-    fm._load_fontmanager(try_read_cache=False)
-
 
 def run_product_analysis():
     st.title('상품 연관성 분석')
 
     uploaded_file = st.file_uploader("CSV 파일을 업로드하세요.", type="csv")
-
-    fontRegistered()
-    fontNames = [f.name for f in fm.fontManager.ttflist]
-    fontname = st.selectbox("폰트 선택", unique(fontNames))
 
     if uploaded_file is not None:
         # 데이터 읽기 및 전처리
