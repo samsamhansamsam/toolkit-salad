@@ -94,20 +94,21 @@ def run_product_analysis():
             else:
                 st.write("이 상품과 함께 구매된 다른 상품이 없습니다.")
 
-        # 2. 업셀 상품 분석
         st.header("2. 업셀 상품 분석")
 
         order_groups_upsell = data.groupby('주문번호').apply(lambda x: {
             'general': x[x['일반/업셀 구분'] == '일반 상품']['상품_식별자'].tolist(),
             'upsell': x[x['일반/업셀 구분'] == '업셀 상품']['상품_식별자'].tolist()
-        }).reset_index()
+        }).reset_index(name='products')
 
         def get_product_combinations_upsell(products):
-            return list(itertools.product(products['general'], products['upsell']))
+            general = products.get('general', [])
+            upsell = products.get('upsell', [])
+            return list(itertools.product(general, upsell))
 
         all_combinations_upsell = []
         for _, row in order_groups_upsell.iterrows():
-            all_combinations_upsell.extend(get_product_combinations_upsell(row['주문번호']))
+            all_combinations_upsell.extend(get_product_combinations_upsell(row['products']))
 
         combination_counts_upsell = Counter(all_combinations_upsell)
 
