@@ -4,9 +4,18 @@ import matplotlib
 import matplotlib.pyplot as plt
 from collections import Counter
 import itertools
+import os
+import matplotlib.font_manager as fm  # 폰트 관련 용도 as fm
 
-matplotlib.rcParams['axes.unicode_minus'] = False
-plt.rcParams["font.family"] = 'NanumGothic'
+@st.cache_data
+def fontRegistered():
+    font_dirs = [os.getcwd() + '/customFonts']
+    font_files = fm.findSystemFonts(fontpaths=font_dirs)
+
+    for font_file in font_files:
+        fm.fontManager.addfont(font_file)
+    fm._load_fontmanager(try_read_cache=False)
+
 
 def run_product_analysis():
     st.title('상품 연관성 분석')
