@@ -75,13 +75,6 @@ def run_product_analysis():
                 df_display = df_related[['상품명', '상품 옵션', '함께 구매된 횟수']].head(10)
                 st.dataframe(df_display)
                 
-                fig, ax = plt.subplots(figsize=(10, 6))
-                ax.bar(df_display['상품명'] + ' (' + df_display['상품 옵션'] + ')', df_display['함께 구매된 횟수'])
-                ax.set_xticklabels(df_display['상품명'] + ' (' + df_display['상품 옵션'] + ')', rotation=45, ha='right')
-                ax.set_xlabel('상품명 (옵션)')
-                ax.set_ylabel('함께 구매된 횟수')
-                ax.set_title(f'{selected_product_display_name}와(과) 함께 구매된 상위 10개 상품')
-                st.pyplot(fig)
             else:
                 st.write("이 상품과 함께 구매된 다른 상품이 없습니다.")
 
@@ -119,13 +112,6 @@ def run_product_analysis():
                 df_display_upsell = df_related_upsell[['상품명', '상품 옵션', '함께 구매된 횟수']].head(10)
                 st.dataframe(df_display_upsell)
 
-                fig, ax = plt.subplots(figsize=(10, 6))
-                ax.bar(df_display_upsell['상품명'] + ' (' + df_display_upsell['상품 옵션'] + ')', df_display_upsell['함께 구매된 횟수'])
-                ax.set_xticklabels(df_display_upsell['상품명'] + ' (' + df_display_upsell['상품 옵션'] + ')', rotation=45, ha='right')
-                ax.set_xlabel('상품명 (옵션)')
-                ax.set_ylabel('함께 구매된 횟수')
-                ax.set_title(f'{selected_product_display_name}와(과) 함께 구매된 상위 10개 업셀 상품')
-                st.pyplot(fig)
             else:
                 st.write("이 상품과 함께 구매된 업셀 상품이 없습니다.")
 
