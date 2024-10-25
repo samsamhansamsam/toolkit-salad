@@ -23,8 +23,8 @@ def run_product_analysis():
         
         data = data.drop_duplicates(subset=['주문번호', '상품 코드', '상품 옵션'], keep='last')
 
-        # 상품 코드와 옵션을 결합하여 고유 상품 식별자 생성
-        data['상품_식별자'] = data['상품 코드'] + '_' + data['상품 옵션']
+        # 상품 코드를 사용하여 고유 상품 식별자 생성
+        data['상품_식별자'] = data['상품 코드']
 
         # 1. 전체 상품 조합 분석
         st.header("1. 전체 상품 조합 분석")
@@ -32,7 +32,7 @@ def run_product_analysis():
         order_groups = data.groupby('주문번호')['상품_식별자'].apply(list).reset_index()
 
         def get_product_combinations(products):
-            return list(itertools.combinations(products, 2))
+            return list(itertools.combinations(set(products), 2))
 
         all_combinations = []
         for _, row in order_groups.iterrows():
@@ -47,30 +47,29 @@ def run_product_analysis():
 
         product_list = [product for product, _ in product_related_counts.most_common()]
 
+        # 상품명과 옵션을 조합하여 드롭다운에 표시할 텍스트 생성
         product_display_names = {
-            identifier: f"{row['상품명']} ({row['상품 옵션']})" if row['상품 옵션'] else row['상품명']
-            for identifier, row in data.set_index('상품_식별자')[['상품명', '상품 옵션']].iterrows()
+            row['상품_식별자']: f"{row['상품명']} ({row['상품 옵션']})" if row['상품 옵션'] else row['상품명']
+            for _, row in data.drop_duplicates(subset=['상품_식별자']).iterrows()
         }
 
-        dropdown_options = [product_display_names.get(product, product) for product in product_list]
+        dropdown_options = [product_display_names[product] for product in product_list]
 
         selected_product_display_name = st.selectbox("상품을 선택하세요 (전체 상품):", dropdown_options)
 
         selected_product_identifier = next(
             (identifier for identifier, display_name in product_display_names.items()
-            if display_name == selected_product_display_name),
+             if display_name == selected_product_display_name),
             selected_product_display_name
         )
 
         def find_related_products(product_identifier):
             related = []
-            for item, count in combination_counts.items():
-                if isinstance(item, tuple) and len(item) == 2:
-                    prod1, prod2 = item
-                    if prod1 == product_identifier:
-                        related.append((prod2, count))
-                    elif prod2 == product_identifier:
-                        related.append((prod1, count))
+            for (prod1, prod2), count in combination_counts.items():
+                if prod1 == product_identifier:
+                    related.append((prod2, count))
+                elif prod2 == product_identifier:
+                    related.append((prod1, count))
             return sorted(related, key=lambda x: x[1], reverse=True)
 
         if selected_product_identifier:
@@ -79,8 +78,7 @@ def run_product_analysis():
             
             if related_products:
                 df_related = pd.DataFrame(related_products, columns=['상품_식별자', '함께 구매된 횟수'])
-                df_related[['상품 코드', '상품 옵션']] = df_related['상품_식별자'].str.split('_', n=1, expand=True)
-                df_related = df_related.merge(data[['상품 코드', '상품명']].drop_duplicates(), on='상품 코드', how='left')
+                df_related = df_related.merge(data[['상품_식별자', '상품명', '상품 옵션']].drop_duplicates(), on='상품_식별자', how='left')
                 df_display = df_related[['상품명', '상품 옵션', '함께 구매된 횟수']].head(10)
                 st.dataframe(df_display)
 
@@ -94,6 +92,7 @@ def run_product_analysis():
             else:
                 st.write("이 상품과 함께 구매된 다른 상품이 없습니다.")
 
+        # 2. 업셀 상품 분석
         st.header("2. 업셀 상품 분석")
 
         order_groups_upsell = data.groupby('주문번호').apply(lambda x: {
@@ -119,11 +118,11 @@ def run_product_analysis():
         product_list_upsell = [product for product, _ in product_related_counts_upsell.most_common()]
 
         product_display_names_upsell = {
-            identifier: f"{row['상품명']} ({row['상품 옵션']})" if row['상품 옵션'] else row['상품명']
-            for identifier, row in data[data['일반/업셀 구분'] == '일반 상품'].set_index('상품_식별자')[['상품명', '상품 옵션']].iterrows()
+            row['상품_식별자']: f"{row['상품명']} ({row['상품 옵션']})" if row['상품 옵션'] else row['상품명']
+            for _, row in data[data['일반/업셀 구분'] == '일반 상품'].drop_duplicates(subset=['상품_식별자']).iterrows()
         }
 
-        dropdown_options_upsell = [product_display_names_upsell.get(product, product) for product in product_list_upsell]
+        dropdown_options_upsell = [product_display_names_upsell[product] for product in product_list_upsell]
 
         selected_product_display_name_upsell = st.selectbox("상품을 선택하세요 (업셀 상품 분석):", dropdown_options_upsell)
 
@@ -144,8 +143,7 @@ def run_product_analysis():
             
             if related_upsell_products:
                 df_related_upsell = pd.DataFrame(related_upsell_products, columns=['상품_식별자', '함께 구매된 횟수'])
-                df_related_upsell[['상품 코드', '상품 옵션']] = df_related_upsell['상품_식별자'].str.split('_', n=1, expand=True)
-                df_related_upsell = df_related_upsell.merge(data[['상품 코드', '상품명']].drop_duplicates(), on='상품 코드', how='left')
+                df_related_upsell = df_related_upsell.merge(data[['상품_식별자', '상품명', '상품 옵션']].drop_duplicates(), on='상품_식별자', how='left')
                 df_display_upsell = df_related_upsell[['상품명', '상품 옵션', '함께 구매된 횟수']].head(10)
                 st.dataframe(df_display_upsell)
 
