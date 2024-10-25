@@ -5,7 +5,7 @@ from collections import Counter
 import itertools
 
 def run_product_analysis():
-    st.title('상품 연관성 분석')
+    st.title('상품 연관성 분석 v1.0')
 
     uploaded_file = st.file_uploader("CSV 파일을 업로드하세요.", type="csv")
 
