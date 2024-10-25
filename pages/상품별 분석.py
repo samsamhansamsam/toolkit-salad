@@ -4,10 +4,9 @@ import matplotlib.pyplot as plt
 from collections import Counter
 import itertools
 
-import matplotlib as mpl
 
-#font 설정 파일 위치 출력
-mpl.matplotlib_fname()
+import os
+os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 def run_product_analysis():
     st.title('상품 연관성 분석')
