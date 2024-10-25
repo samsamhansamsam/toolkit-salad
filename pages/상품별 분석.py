@@ -10,7 +10,12 @@ def run_product_analysis():
     uploaded_file = st.file_uploader("CSV 파일을 업로드하세요.", type="csv")
 
     if uploaded_file is not None:
+        # 데이터 읽기 및 전처리
         data = pd.read_csv(uploaded_file)
+        data['총 주문 금액'] = pd.to_numeric(data['총 주문 금액'], errors='coerce')
+        data = data[data['총 주문 금액'] > 0]
+        data = data.sort_values(by=['일반/업셀 구분'], ascending=False)
+        data = data.drop_duplicates(subset=['주문번호'], keep='last')
 
         # 주문별 상품 그룹화
         order_groups = data.groupby('주문번호')['상품명'].apply(list).reset_index()
@@ -51,13 +56,13 @@ def run_product_analysis():
             st.dataframe(df_related.head(10))
 
             # 막대 그래프로 시각화
-            plt.figure(figsize=(10, 6))
-            plt.bar(df_related['상품명'].head(10), df_related['함께 구매된 횟수'].head(10))
-            plt.xticks(rotation=45, ha='right')
-            plt.xlabel('상품명')
-            plt.ylabel('함께 구매된 횟수')
-            plt.title(f'{selected_product}와(과) 함께 구매된 상위 10개 상품')
-            st.pyplot(plt)
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.bar(df_related['상품명'].head(10), df_related['함께 구매된 횟수'].head(10))
+            ax.set_xticklabels(df_related['상품명'].head(10), rotation=45, ha='right')
+            ax.set_xlabel('상품명')
+            ax.set_ylabel('함께 구매된 횟수')
+            ax.set_title(f'{selected_product}와(과) 함께 구매된 상위 10개 상품')
+            st.pyplot(fig)
 
     else:
         st.write("CSV 파일을 업로드해주세요.")
