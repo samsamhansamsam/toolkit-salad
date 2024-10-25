@@ -22,6 +22,10 @@ def run_product_analysis():
 
     uploaded_file = st.file_uploader("CSV 파일을 업로드하세요.", type="csv")
 
+    fontRegistered()
+    fontNames = [f.name for f in fm.fontManager.ttflist]
+    fontname = st.selectbox("폰트 선택", unique(fontNames))
+
     if uploaded_file is not None:
         # 데이터 읽기 및 전처리
         data = pd.read_csv(uploaded_file)
