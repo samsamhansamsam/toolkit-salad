@@ -97,7 +97,9 @@ def run_product_analysis():
                 # 상위 10개 상품만 표시
                 df_display = df_related[['상품명', '상품 옵션', '함께 구매된 횟수']].head(10)
                 st.dataframe(df_display)
-
+                
+                plt.rcParams['font.family'] = 'Malgun Gothic'
+                
                 # 막대 그래프로 시각화
                 fig, ax = plt.subplots(figsize=(10, 6))
                 ax.bar(df_display['상품명'] + ' (' + df_display['상품 옵션'] + ')', df_display['함께 구매된 횟수'])
