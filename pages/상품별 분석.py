@@ -15,6 +15,13 @@ def run_product_analysis():
         data['총 주문 금액'] = pd.to_numeric(data['총 주문 금액'], errors='coerce')
         data = data[data['총 주문 금액'] > 0]
         data = data.sort_values(by=['일반/업셀 구분'], ascending=False)
+        
+        # '상품 옵션' 열이 없거나 NaN인 경우 빈 문자열로 채우기
+        if '상품 옵션' not in data.columns:
+            data['상품 옵션'] = ''
+        else:
+            data['상품 옵션'] = data['상품 옵션'].fillna('')
+        
         data = data.drop_duplicates(subset=['주문번호', '상품 코드', '상품 옵션'], keep='last')
 
         # 상품 코드와 옵션을 결합하여 고유 상품 식별자 생성
@@ -44,7 +51,7 @@ def run_product_analysis():
 
         # 상품명과 옵션을 조합하여 드롭다운에 표시할 텍스트 생성
         product_display_names = {
-            identifier: f"{row['상품명']} ({row['상품 옵션']})"
+            identifier: f"{row['상품명']} ({row['상품 옵션']})" if row['상품 옵션'] else row['상품명']
             for identifier, row in data.set_index('상품_식별자')[['상품명', '상품 옵션']].iterrows()
         }
 
