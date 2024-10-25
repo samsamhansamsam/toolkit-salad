@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 from collections import Counter
 import itertools
 
-plt.rcParams['font.family'] = 'NanumGothic'
+plt.rcParams['font.family'] ='Malgun Gothic'
+plt.rcParams['axes.unicode_minus'] =False
 
 def run_product_analysis():
     st.title('상품 연관성 분석')
