@@ -26,9 +26,9 @@ def run_product_analysis():
         # 상품 코드를 사용하여 고유 상품 식별자 생성
         data['상품_식별자'] = data['상품 코드']
 
-        # 상품명과 옵션을 조합하여 드롭다운에 표시할 텍스트 생성
+        # 상품코드, 상품명, 옵션을 조합하여 드롭다운에 표시할 텍스트 생성
         product_display_names = {
-            row['상품_식별자']: f"{row['상품명']} ({row['상품 옵션']})" if row['상품 옵션'] else row['상품명']
+            row['상품_식별자']: f"{row['상품 코드']} - {row['상품명']} ({row['상품 옵션']})" if row['상품 옵션'] else f"{row['상품 코드']} - {row['상품명']}"
             for _, row in data.drop_duplicates(subset=['상품_식별자']).iterrows()
         }
 
@@ -71,8 +71,8 @@ def run_product_analysis():
             
             if related_products:
                 df_related = pd.DataFrame(related_products, columns=['상품_식별자', '함께 구매된 횟수'])
-                df_related = df_related.merge(data[['상품_식별자', '상품명', '상품 옵션']].drop_duplicates(), on='상품_식별자', how='left')
-                df_display = df_related[['상품명', '상품 옵션', '함께 구매된 횟수']].head(10)
+                df_related = df_related.merge(data[['상품_식별자', '상품 코드', '상품명', '상품 옵션']].drop_duplicates(), on='상품_식별자', how='left')
+                df_display = df_related[['상품 코드', '상품명', '상품 옵션', '함께 구매된 횟수']].head(10)
                 st.dataframe(df_display)
                 
             else:
@@ -108,8 +108,8 @@ def run_product_analysis():
             
             if related_upsell_products:
                 df_related_upsell = pd.DataFrame(related_upsell_products, columns=['상품_식별자', '함께 구매된 횟수'])
-                df_related_upsell = df_related_upsell.merge(data[['상품_식별자', '상품명', '상품 옵션']].drop_duplicates(), on='상품_식별자', how='left')
-                df_display_upsell = df_related_upsell[['상품명', '상품 옵션', '함께 구매된 횟수']].head(10)
+                df_related_upsell = df_related_upsell.merge(data[['상품_식별자', '상품 코드', '상품명', '상품 옵션']].drop_duplicates(), on='상품_식별자', how='left')
+                df_display_upsell = df_related_upsell[['상품 코드', '상품명', '상품 옵션', '함께 구매된 횟수']].head(10)
                 st.dataframe(df_display_upsell)
 
             else:
