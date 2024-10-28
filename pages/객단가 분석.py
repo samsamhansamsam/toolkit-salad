@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # 제목 설정
-st.title('알파업셀 객단가 시각화 도구 v1.2')
+st.title('객단가 분석 v1.2')
 
 # 파일 업로더 생성
 uploaded_file = st.file_uploader("CSV 파일을 달라.", type="csv")
