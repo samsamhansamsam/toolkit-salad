@@ -32,13 +32,16 @@ def run_product_analysis():
             for _, row in data.drop_duplicates(subset=['상품_식별자']).iterrows()
         }
 
-        dropdown_options = list(product_display_names.values())
+        # 상품명을 기준으로 정렬
+        sorted_product_display_names = dict(sorted(product_display_names.items(), key=lambda x: x[1].split(' - ')[1]))
+
+        dropdown_options = list(sorted_product_display_names.values())
 
         selected_product_display_name = st.selectbox("상품을 선택하세요:", dropdown_options)
 
         selected_product_identifier = next(
-            (identifier for identifier, display_name in product_display_names.items()
-             if display_name == selected_product_display_name),
+            (identifier for identifier, display_name in sorted_product_display_names.items()
+            if display_name == selected_product_display_name),
             None
         )
 
