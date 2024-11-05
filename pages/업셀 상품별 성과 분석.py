@@ -15,14 +15,15 @@ if uploaded_file is not None:
     upsell_data = data[data['일반/업셀 구분'] == '업셀 상품']
     
     if not upsell_data.empty:
-        # 상품 코드, 상품명, 구매 수량, 상품 단가 기준으로 요약 및 합계 매출 계산
+        # 각 행의 매출 계산
+        upsell_data['합계 매출'] = upsell_data['구매 수량'] * upsell_data['상품 단가']
+        
+        # 상품 코드, 상품명, 구매 수량 합계, 첫 단가, 합계 매출을 기준으로 요약
         upsell_summary = upsell_data.groupby(['상품 코드', '상품명'], as_index=False).agg({
             '구매 수량': 'sum',
-            '상품 단가': 'first'
+            '상품 단가': 'first',  # 첫 번째 단가 표시
+            '합계 매출': 'sum'      # 합계 매출 합산
         })
-        
-        # 합계 매출 계산 (구매 수량 * 상품 단가)
-        upsell_summary['합계 매출'] = upsell_summary['구매 수량'] * upsell_summary['상품 단가']
 
         # 요약 결과 표시
         st.write("### 업셀 상품 구매 성과 요약")
