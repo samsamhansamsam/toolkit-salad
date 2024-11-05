@@ -18,11 +18,11 @@ if uploaded_file is not None:
         # 각 행의 매출 계산
         upsell_data['합계 매출'] = upsell_data['구매 수량'] * upsell_data['상품 단가']
         
-        # 상품 코드, 상품명, 구매 수량 합계, 첫 단가, 합계 매출을 기준으로 요약
+        # 상품 코드, 상품명별로 구매 수량 합계, 단가 목록, 합계 매출을 기준으로 요약
         upsell_summary = upsell_data.groupby(['상품 코드', '상품명'], as_index=False).agg({
             '구매 수량': 'sum',
-            '상품 단가': 'first',  # 첫 번째 단가 표시
-            '합계 매출': 'sum'      # 합계 매출 합산
+            '상품 단가': lambda x: ', '.join(map(str, sorted(x.unique()))),  # 단가 목록 표시
+            '합계 매출': 'sum'  # 합계 매출 합산
         })
 
         # 요약 결과 표시
