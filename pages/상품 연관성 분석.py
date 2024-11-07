@@ -37,7 +37,11 @@ def run_product_analysis():
 
         dropdown_options = list(sorted_product_display_names.values())
 
-        selected_product_display_name = st.selectbox("상품을 선택하세요:", dropdown_options)
+        # 검색 기능 추가
+        search_term = st.text_input("상품 검색:", "")
+        filtered_options = [option for option in dropdown_options if search_term.lower() in option.lower()]
+
+        selected_product_display_name = st.selectbox("상품을 선택하세요:", filtered_options)
 
         selected_product_identifier = next(
             (identifier for identifier, display_name in sorted_product_display_names.items()
