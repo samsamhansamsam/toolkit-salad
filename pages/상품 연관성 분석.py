@@ -28,8 +28,8 @@ def run_product_analysis():
             '주문번호': 'count'  # 주문 수를 세어 단가 계산에 사용
         }).reset_index()
 
-        # 단가 계산 (총 주문 금액 / 주문 수)
-        aggregated_data['단가'] = aggregated_data['총 주문 금액'] / aggregated_data['주문번호']
+        # 단가 계산 (총 주문 금액 / 주문 수) 및 반올림
+        aggregated_data['단가'] = (aggregated_data['총 주문 금액'] / aggregated_data['주문번호']).round().astype(int)
 
         # 상품 식별자 생성 (상품명과 옵션 조합)
         aggregated_data['상품_식별자'] = aggregated_data['상품명'] + ' - ' + aggregated_data['상품 옵션']
@@ -66,11 +66,12 @@ def run_product_analysis():
         # 2. 상품 단가를 오른쪽 끝에 추가
         st.header("상품 목록")
         display_data = aggregated_data[['상품명', '상품 옵션', '단가']].copy()
+        display_data['단가'] = display_data['단가'].apply(lambda x: f"{x:,}원")
         
         # 3. 선택한 상품의 단가와 다른 상품들의 단가 합계 계산
         if selected_product_identifier:
             selected_price = selected_product['단가']
-            display_data['합계 단가'] = display_data['단가'] + selected_price
+            display_data['합계 단가'] = aggregated_data['단가'] + selected_price
             display_data['합계 단가'] = display_data['합계 단가'].apply(lambda x: f"{x:,}원")
 
         st.dataframe(display_data)
