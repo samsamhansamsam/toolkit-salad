@@ -5,7 +5,7 @@ from collections import Counter
 import itertools
 
 def run_product_analysis():
-    st.title('상품 연관성 분석 v1.1')
+    st.title('상품 연관성 분석 v1.2')
 
     uploaded_file = st.file_uploader("CSV 파일을 업로드하세요.", type="csv")
 
@@ -24,15 +24,19 @@ def run_product_analysis():
         # 상품명과 상품 옵션으로 그룹화하여 데이터 집계
         aggregated_data = data.groupby(['상품명', '상품 옵션']).agg({
             '총 주문 금액': 'sum',
-            '일반/업셀 구분': 'first'  # 각 그룹의 첫 번째 값 사용
+            '일반/업셀 구분': 'first',
+            '주문번호': 'count'  # 주문 수를 세어 단가 계산에 사용
         }).reset_index()
+
+        # 단가 계산 (총 주문 금액 / 주문 수)
+        aggregated_data['단가'] = aggregated_data['총 주문 금액'] / aggregated_data['주문번호']
 
         # 상품 식별자 생성 (상품명과 옵션 조합)
         aggregated_data['상품_식별자'] = aggregated_data['상품명'] + ' - ' + aggregated_data['상품 옵션']
 
-        # 상품 식별자와 표시 이름 생성
+        # 상품 식별자와 표시 이름 생성 (단가 포함)
         product_display_names = {
-            row['상품_식별자']: f"{row['상품명']} ({row['상품 옵션']})" if row['상품 옵션'] else row['상품명']
+            row['상품_식별자']: f"{row['상품명']} ({row['상품 옵션']}) - {row['단가']:,}원" if row['상품 옵션'] else f"{row['상품명']} - {row['단가']:,}원"
             for _, row in aggregated_data.iterrows()
         }
 
@@ -53,41 +57,23 @@ def run_product_analysis():
             None
         )
 
-        # 1. 전체 상품 조합 분석
-        st.header("1. 전체 상품 조합 분석")
-
-        order_groups = data.groupby('주문번호')['상품명'].apply(list).reset_index()
-
-        def get_product_combinations(products):
-            return list(itertools.combinations(set(products), 2))
-
-        all_combinations = []
-        for _, row in order_groups.iterrows():
-            all_combinations.extend(get_product_combinations(row['상품명']))
-
-        combination_counts = Counter(all_combinations)
-
-        def find_related_products(product_name):
-            related = []
-            for (prod1, prod2), count in combination_counts.items():
-                if prod1 == product_name:
-                    related.append((prod2, count))
-                elif prod2 == product_name:
-                    related.append((prod1, count))
-            return sorted(related, key=lambda x: x[1], reverse=True)
-
+        # 1. 선택한 상품의 상품명과 단가 표시
         if selected_product_identifier:
-            selected_product_name = selected_product_identifier.split(' - ')[0]  # 상품명 추출
-            related_products = find_related_products(selected_product_name)
-            st.write(f"{selected_product_display_name}와(과) 함께 구매된 상품:")
-            
-            if related_products:
-                df_related = pd.DataFrame(related_products, columns=['상품명', '함께 구매된 횟수'])
-                st.dataframe(df_related.head(10))
-            else:
-                st.write("이 상품과 함께 구매된 다른 상품이 없습니다.")
+            selected_product = aggregated_data[aggregated_data['상품_식별자'] == selected_product_identifier].iloc[0]
+            st.write(f"선택한 상품: {selected_product['상품명']}")
+            st.write(f"단가: {selected_product['단가']:,}원")
 
-        # 2. 업셀 상품 분석 (필요한 경우 유사하게 수정)
+        # 2. 상품 단가를 오른쪽 끝에 추가
+        st.header("상품 목록")
+        display_data = aggregated_data[['상품명', '상품 옵션', '단가']].copy()
+        
+        # 3. 선택한 상품의 단가와 다른 상품들의 단가 합계 계산
+        if selected_product_identifier:
+            selected_price = selected_product['단가']
+            display_data['합계 단가'] = display_data['단가'] + selected_price
+            display_data['합계 단가'] = display_data['합계 단가'].apply(lambda x: f"{x:,}원")
+
+        st.dataframe(display_data)
 
     else:
         st.write("CSV 파일을 업로드해주세요.")
