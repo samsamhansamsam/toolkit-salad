@@ -5,7 +5,7 @@ from collections import Counter
 import itertools
 
 def run_product_analysis():
-    st.title('상품 연관성 분석 v1.3')
+    st.title('상품 연관성 분석 v1.4')
 
     uploaded_file = st.file_uploader("CSV 파일을 업로드하세요.", type="csv")
 
@@ -33,17 +33,20 @@ def run_product_analysis():
         # 단가 계산 (총 주문 금액 / 총 구매 수량) 및 반올림
         aggregated_data['단가'] = (aggregated_data['총 주문 금액'] / aggregated_data['구매 수량']).round().astype(int)
 
+        # 구매 수량을 기준으로 내림차순 정렬
+        aggregated_data = aggregated_data.sort_values(by='구매 수량', ascending=False)
+
         # 상품 식별자 생성 (상품명과 옵션 조합)
         aggregated_data['상품_식별자'] = aggregated_data['상품명'] + ' - ' + aggregated_data['상품 옵션']
 
-        # 상품 식별자와 표시 이름 생성 (단가 포함)
+        # 상품 식별자와 표시 이름 생성 (단가와 구매 수량 포함)
         product_display_names = {
-            row['상품_식별자']: f"{row['상품명']} ({row['상품 옵션']}) - {row['단가']:,}원" if row['상품 옵션'] else f"{row['상품명']} - {row['단가']:,}원"
+            row['상품_식별자']: f"{row['상품명']} ({row['상품 옵션']}) - {row['단가']:,}원 - {row['구매 수량']:,}개" if row['상품 옵션'] else f"{row['상품명']} - {row['단가']:,}원 - {row['구매 수량']:,}개"
             for _, row in aggregated_data.iterrows()
         }
 
-        # 상품명을 기준으로 정렬
-        sorted_product_display_names = dict(sorted(product_display_names.items(), key=lambda x: x[1]))
+        # 구매 수량을 기준으로 정렬된 상품 목록 생성
+        sorted_product_display_names = dict(sorted(product_display_names.items(), key=lambda x: int(x[1].split(' - ')[-1].replace(',', '').replace('개', '')), reverse=True))
 
         dropdown_options = list(sorted_product_display_names.values())
 
@@ -64,7 +67,7 @@ def run_product_analysis():
             selected_product = aggregated_data[aggregated_data['상품_식별자'] == selected_product_identifier].iloc[0]
             st.write(f"선택한 상품: {selected_product['상품명']}")
             st.write(f"단가: {selected_product['단가']:,}원")
-            st.write(f"총 구매 수량: {selected_product['구매 수량']:,}개")  # 총 구매 수량 추가
+            st.write(f"총 구매 수량: {selected_product['구매 수량']:,}개")
 
         # 2. 상품 단가와 총 구매 수량을 오른쪽 끝에 추가
         st.header("상품 목록")
