@@ -5,7 +5,7 @@ from collections import Counter
 import itertools
 
 def run_product_analysis():
-    st.title('상품 연관성 분석 v1.5')
+    st.title('상품 연관성 분석 v1.4')
 
     uploaded_file = st.file_uploader("CSV 파일을 업로드하세요.", type="csv")
 
@@ -27,26 +27,26 @@ def run_product_analysis():
             '총 주문 금액': 'sum',
             '일반/업셀 구분': 'first',
             '주문번호': 'count',
-            '구매 수량': 'sum'
+            '구매 수량': 'sum'  # 총 구매 수량 추가
         }).reset_index()
 
         # 단가 계산 (총 주문 금액 / 총 구매 수량) 및 반올림
         aggregated_data['단가'] = (aggregated_data['총 주문 금액'] / aggregated_data['구매 수량']).round().astype(int)
 
-        # 주문 수를 기준으로 내림차순 정렬
-        aggregated_data = aggregated_data.sort_values(by='주문번호', ascending=False)
+        # 구매 수량을 기준으로 내림차순 정렬
+        aggregated_data = aggregated_data.sort_values(by='구매 수량', ascending=False)
 
         # 상품 식별자 생성 (상품명과 옵션 조합)
         aggregated_data['상품_식별자'] = aggregated_data['상품명'] + ' - ' + aggregated_data['상품 옵션']
 
-        # 상품 식별자와 표시 이름 생성 (단가, 구매 수량, 주문 수 포함)
+        # 상품 식별자와 표시 이름 생성 (단가와 구매 수량 포함)
         product_display_names = {
-            row['상품_식별자']: f"{row['상품명']} ({row['상품 옵션']}) - {row['단가']:,}원 - {row['구매 수량']:,}개 - {row['주문번호']}건" if row['상품 옵션'] else f"{row['상품명']} - {row['단가']:,}원 - {row['구매 수량']:,}개 - {row['주문번호']}건"
+            row['상품_식별자']: f"{row['상품명']} ({row['상품 옵션']}) - {row['단가']:,}원 - {row['구매 수량']:,}개" if row['상품 옵션'] else f"{row['상품명']} - {row['단가']:,}원 - {row['구매 수량']:,}개"
             for _, row in aggregated_data.iterrows()
         }
 
-        # 주문 수를 기준으로 정렬된 상품 목록 생성
-        sorted_product_display_names = dict(sorted(product_display_names.items(), key=lambda x: int(x[1].split(' - ')[-1].replace('건', '')), reverse=True))
+        # 구매 수량을 기준으로 정렬된 상품 목록 생성
+        sorted_product_display_names = dict(sorted(product_display_names.items(), key=lambda x: int(x[1].split(' - ')[-1].replace(',', '').replace('개', '')), reverse=True))
 
         dropdown_options = list(sorted_product_display_names.values())
 
@@ -68,14 +68,12 @@ def run_product_analysis():
             st.write(f"선택한 상품: {selected_product['상품명']}")
             st.write(f"단가: {selected_product['단가']:,}원")
             st.write(f"총 구매 수량: {selected_product['구매 수량']:,}개")
-            st.write(f"총 주문 수: {selected_product['주문번호']}건")
 
         # 2. 상품 단가와 총 구매 수량을 오른쪽 끝에 추가
         st.header("상품 목록")
-        display_data = aggregated_data[['상품명', '상품 옵션', '단가', '구매 수량', '주문번호']].copy()
+        display_data = aggregated_data[['상품명', '상품 옵션', '단가', '구매 수량']].copy()
         display_data['단가'] = display_data['단가'].apply(lambda x: f"{x:,}원")
         display_data['구매 수량'] = display_data['구매 수량'].apply(lambda x: f"{x:,}개")
-        display_data['주문 수'] = display_data['주문번호'].apply(lambda x: f"{x}건")
         
         # 3. 선택한 상품의 단가와 다른 상품들의 단가 합계 계산
         if selected_product_identifier:
