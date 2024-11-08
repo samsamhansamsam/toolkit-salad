@@ -39,7 +39,56 @@ def run_product_analysis():
             for _, row in aggregated_data.iterrows()
         }
 
-        # 나머지 코드는 그대로 유지...
+        # 상품명을 기준으로 정렬
+        sorted_product_display_names = dict(sorted(product_display_names.items(), key=lambda x: x[1]))
+
+        dropdown_options = list(sorted_product_display_names.values())
+
+        # 검색 기능 추가
+        search_term = st.text_input("상품 검색:", "")
+        filtered_options = [option for option in dropdown_options if search_term.lower() in option.lower()]
+
+        selected_product_display_name = st.selectbox("상품을 선택하세요:", filtered_options)
+
+        selected_product_identifier = next(
+            (identifier for identifier, display_name in sorted_product_display_names.items()
+            if display_name == selected_product_display_name),
+            None
+        )
+
+        # 1. 전체 상품 조합 분석
+        st.header("1. 전체 상품 조합 분석")
+
+        order_groups = data.groupby('주문번호')['상품명'].apply(list).reset_index()
+
+        def get_product_combinations(products):
+            return list(itertools.combinations(set(products), 2))
+
+        all_combinations = []
+        for _, row in order_groups.iterrows():
+            all_combinations.extend(get_product_combinations(row['상품명']))
+
+        combination_counts = Counter(all_combinations)
+
+        def find_related_products(product_name):
+            related = []
+            for (prod1, prod2), count in combination_counts.items():
+                if prod1 == product_name:
+                    related.append((prod2, count))
+                elif prod2 == product_name:
+                    related.append((prod1, count))
+            return sorted(related, key=lambda x: x[1], reverse=True)
+
+        if selected_product_identifier:
+            selected_product_name = selected_product_identifier.split(' - ')[0]  # 상품명 추출
+            related_products = find_related_products(selected_product_name)
+            st.write(f"{selected_product_display_name}와(과) 함께 구매된 상품:")
+            
+            if related_products:
+                df_related = pd.DataFrame(related_products, columns=['상품명', '함께 구매된 횟수'])
+                st.dataframe(df_related.head(10))
+            else:
+                st.write("이 상품과 함께 구매된 다른 상품이 없습니다.")
 
         # 2. 업셀 상품 분석
         st.header("2. 업셀 상품 분석")
@@ -49,7 +98,34 @@ def run_product_analysis():
             'upsell': x[x['일반/업셀 구분'] == '업셀 상품']['상품_식별자'].tolist()
         }).reset_index(name='products')
 
-        # 나머지 코드는 그대로 유지...
+        def get_product_combinations_upsell(products):
+            general = products.get('general', [])
+            upsell = products.get('upsell', [])
+            return list(itertools.product(general, upsell))
+
+        all_combinations_upsell = []
+        for _, row in order_groups_upsell.iterrows():
+            all_combinations_upsell.extend(get_product_combinations_upsell(row['products']))
+
+        combination_counts_upsell = Counter(all_combinations_upsell)
+
+        def find_related_upsell_products(product_identifier):
+            related = [(upsell_prod, count) for (general_prod, upsell_prod), count in combination_counts_upsell.items()
+                       if general_prod == product_identifier]
+            return sorted(related, key=lambda x: x[1], reverse=True)
+
+        if selected_product_identifier:
+            related_upsell_products = find_related_upsell_products(selected_product_identifier)
+            st.write(f"{selected_product_display_name}와(과) 함께 구매된 업셀 상품:")
+            
+            if related_upsell_products:
+                df_related_upsell = pd.DataFrame(related_upsell_products, columns=['상품_식별자', '함께 구매된 횟수'])
+                df_related_upsell = df_related_upsell.merge(data[['상품_식별자', '상품 코드', '상품명', '상품 옵션']].drop_duplicates(), on='상품_식별자', how='left')
+                df_display_upsell = df_related_upsell[['상품 코드', '상품명', '상품 옵션', '함께 구매된 횟수']].head(10)
+                st.dataframe(df_display_upsell)
+
+            else:
+                st.write("이 상품과 함께 구매된 업셀 상품이 없습니다.")
 
     else:
         st.write("CSV 파일을 업로드해주세요.")
