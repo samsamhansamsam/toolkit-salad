@@ -93,9 +93,9 @@ x = range(len(services))
 width = 0.2
 
 fig2, ax2 = plt.subplots(figsize=(12, 6))
-ax2.bar([p - 1.5*width for p in x], comparison_df['Latest'], width, label='Latest')
-ax2.bar([p - 0.5*width for p in x], comparison_df['Previous'], width, label='Previous')
-ax2.bar([p + 1.5*width for p in x], comparison_df['Overall Average'], width, label='Overall Average')
+ax2.bar([p - 1*width for p in x], comparison_df['Latest'], width, label='Latest')
+ax2.bar([p - 0*width for p in x], comparison_df['Previous'], width, label='Previous')
+ax2.bar([p + 1*width for p in x], comparison_df['Overall Average'], width, label='Overall Average')
 
 ax2.set_xticks(x)
 ax2.set_xticklabels(services, rotation=45, ha="right")
