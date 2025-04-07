@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import mysql.connector
 import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.ticker import PercentFormatter
 import matplotlib.dates as mdates
 
 # --- Page Setup ---
@@ -38,34 +40,35 @@ df = load_data()
 df['snapshot_date'] = pd.to_datetime(df['snapshot_date'])
 pivot = df.groupby(['snapshot_date', 'service_name'])['shop_id'].nunique().unstack(fill_value=0)
 
-# Calculate percentage for each snapshot (each row sums to 100%)
+# Calculate percentage for each snapshot (row normalized to 100%)
 pivot_pct = pivot.div(pivot.sum(axis=1), axis=0) * 100
 
-# --- 1. Line Chart: Weekly Trend by Service (Percentage) ---
-st.subheader("Weekly Trend by Service (Percentage)")
-fig, ax = plt.subplots(figsize=(10, 6))
+# --- 1. Stacked Bar Chart: Weekly Service Usage Distribution (100% Stacked) ---
+st.subheader("Weekly Service Usage Distribution (100% Stacked)")
+fig_stacked, ax_stacked = plt.subplots(figsize=(10, 6))
+bottom = np.zeros(len(pivot_pct))
+
 for service in pivot_pct.columns:
-    ax.plot(pivot_pct.index, pivot_pct[service], marker='o', label=service)
+    ax_stacked.bar(pivot_pct.index, pivot_pct[service], bottom=bottom, label=service)
+    bottom += pivot_pct[service].values
 
-ax.set_title("Percentage of Active Shops per Service (Weekly)")
-ax.set_xlabel("Snapshot Date")
-ax.set_ylabel("Percentage (%)")
-ax.legend(title="Service", bbox_to_anchor=(1.05, 1), loc='upper left')
-ax.grid(True)
+ax_stacked.set_title("Weekly Active Shops Distribution by Service (Normalized to 100%)")
+ax_stacked.set_xlabel("Snapshot Date")
+ax_stacked.set_ylabel("Percentage (%)")
+ax_stacked.yaxis.set_major_formatter(PercentFormatter(decimals=0))
 
-# Limit the x-axis to the actual data range
+# Limit x-axis to actual data range
 min_date = pivot_pct.index.min()
 max_date = pivot_pct.index.max()
-ax.set_xlim([min_date, max_date])
-
-# Format the x-axis to show dates at 7-day intervals
-ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-ax.xaxis.set_major_locator(mdates.DayLocator(interval=7))
+ax_stacked.set_xlim([min_date, max_date])
+ax_stacked.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+ax_stacked.xaxis.set_major_locator(mdates.DayLocator(interval=7))
 plt.xticks(rotation=45)
 
-st.pyplot(fig)
+ax_stacked.legend(title="Service", bbox_to_anchor=(1.05, 1), loc='upper left')
+st.pyplot(fig_stacked)
 
-# --- 2. Bar Chart: Snapshot Comparison ---
+# --- 2. (기존 Snapshot Comparison Bar Chart: 그대로 유지) ---
 st.subheader("Snapshot Comparison")
 if len(pivot) >= 3:
     latest = pivot.iloc[-1]
