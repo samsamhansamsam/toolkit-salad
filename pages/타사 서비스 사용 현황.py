@@ -73,21 +73,18 @@ st.pyplot(fig_stacked)
 
 # --- 2. (기존 Snapshot Comparison Bar Chart: 그대로 유지) ---
 st.subheader("Snapshot Comparison")
-if len(pivot) >= 3:
+if len(pivot) >= 2:
     latest = pivot.iloc[-1]
     previous = pivot.iloc[-2]
-    before_previous = pivot.iloc[-3]
 else:
     latest = pivot.iloc[-1]
     previous = pivot.iloc[-2] if len(pivot) >= 2 else latest
-    before_previous = latest
 
 overall_avg = pivot.mean()
 
 comparison_df = pd.DataFrame({
     'Latest': latest,
     'Previous': previous,
-    'Before Previous': before_previous,
     'Overall Average': overall_avg
 })
 
@@ -98,7 +95,6 @@ width = 0.2
 fig2, ax2 = plt.subplots(figsize=(12, 6))
 ax2.bar([p - 1.5*width for p in x], comparison_df['Latest'], width, label='Latest')
 ax2.bar([p - 0.5*width for p in x], comparison_df['Previous'], width, label='Previous')
-ax2.bar([p + 0.5*width for p in x], comparison_df['Before Previous'], width, label='Before Previous')
 ax2.bar([p + 1.5*width for p in x], comparison_df['Overall Average'], width, label='Overall Average')
 
 ax2.set_xticks(x)
