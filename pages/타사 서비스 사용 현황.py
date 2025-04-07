@@ -34,26 +34,28 @@ def load_data():
 
 df = load_data()
 
-# --- Pivot Table: All Weekly Service Usage ---
-# Convert snapshot_date to datetime if needed
+# --- Data Preparation ---
 df['snapshot_date'] = pd.to_datetime(df['snapshot_date'])
 pivot = df.groupby(['snapshot_date', 'service_name'])['shop_id'].nunique().unstack(fill_value=0)
 
-# --- 1. Line Chart: Weekly Trend by Service (All Data) ---
-st.subheader("Weekly Trend by Service (All Data)")
-fig, ax = plt.subplots(figsize=(10, 6))
-for service in pivot.columns:
-    ax.plot(pivot.index, pivot[service], marker='o', label=service)
+# Calculate percentage for each snapshot (each row sums to 100%)
+pivot_pct = pivot.div(pivot.sum(axis=1), axis=0) * 100
 
-ax.set_title("Weekly Active Shops per Service")
+# --- 1. Line Chart: Weekly Trend by Service (Percentage) ---
+st.subheader("Weekly Trend by Service (Percentage)")
+fig, ax = plt.subplots(figsize=(10, 6))
+for service in pivot_pct.columns:
+    ax.plot(pivot_pct.index, pivot_pct[service], marker='o', label=service)
+
+ax.set_title("Percentage of Active Shops per Service (Weekly)")
 ax.set_xlabel("Snapshot Date")
-ax.set_ylabel("Number of Shops")
+ax.set_ylabel("Percentage (%)")
 ax.legend(title="Service", bbox_to_anchor=(1.05, 1), loc='upper left')
 ax.grid(True)
 
-# Limit the x-axis to the actual data range so that the data isn't squished
-min_date = pivot.index.min()
-max_date = pivot.index.max()
+# Limit the x-axis to the actual data range
+min_date = pivot_pct.index.min()
+max_date = pivot_pct.index.max()
 ax.set_xlim([min_date, max_date])
 
 # Format the x-axis to show dates at 7-day intervals
@@ -74,7 +76,7 @@ else:
     previous = pivot.iloc[-2] if len(pivot) >= 2 else latest
     before_previous = latest
 
-overall_avg = pivot.mean()  # Overall average usage per service
+overall_avg = pivot.mean()
 
 comparison_df = pd.DataFrame({
     'Latest': latest,
@@ -83,7 +85,6 @@ comparison_df = pd.DataFrame({
     'Overall Average': overall_avg
 })
 
-# Plot grouped bar chart for each service
 services = comparison_df.index.tolist()
 x = range(len(services))
 width = 0.2
