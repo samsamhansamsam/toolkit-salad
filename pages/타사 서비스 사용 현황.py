@@ -43,11 +43,15 @@ pivot = df.groupby(['snapshot_date', 'service_name'])['shop_id'].nunique().unsta
 # Calculate percentage for each snapshot (row normalized to 100%)
 pivot_pct = pivot.div(pivot.sum(axis=1), axis=0) * 100
 
-# --- 1. Stacked Bar Chart: Weekly Service Usage Distribution (100% Stacked) ---
+# 자동 정렬: 전체 주차에 걸친 각 서비스의 평균 비중 기준 내림차순 정렬
+avg_proportions = pivot_pct.mean(axis=0)
+sorted_services = avg_proportions.sort_values(ascending=False).index.tolist()
+pivot_pct = pivot_pct[sorted_services]
+
+# --- Stacked Bar Chart: Weekly Service Usage Distribution (100% Stacked) ---
 st.subheader("Weekly Service Usage Distribution (100% Stacked)")
 fig_stacked, ax_stacked = plt.subplots(figsize=(10, 6))
 bottom = np.zeros(len(pivot_pct))
-
 for service in pivot_pct.columns:
     ax_stacked.bar(pivot_pct.index, pivot_pct[service], bottom=bottom, label=service)
     bottom += pivot_pct[service].values
@@ -55,9 +59,8 @@ for service in pivot_pct.columns:
 ax_stacked.set_title("Weekly Active Shops Distribution by Service (Normalized to 100%)")
 ax_stacked.set_xlabel("Snapshot Date")
 ax_stacked.set_ylabel("Percentage (%)")
-ax_stacked.yaxis.set_major_formatter(PercentFormatter(decimals=0))
+ax_stacked.yaxis.set_major_formatter(plt.matplotlib.ticker.PercentFormatter(decimals=0))
 
-# Limit x-axis to actual data range
 min_date = pivot_pct.index.min()
 max_date = pivot_pct.index.max()
 ax_stacked.set_xlim([min_date, max_date])
