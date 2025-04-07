@@ -33,36 +33,27 @@ def load_data():
 
 df = load_data()
 
-# --- Data Preparation ---
-# Convert snapshot_date to datetime if not already
+# --- Pivot Table: All Weekly Service Usage ---
+# Convert snapshot_date to datetime if needed
 df['snapshot_date'] = pd.to_datetime(df['snapshot_date'])
-
-# Create pivot table: count of unique shop_id per snapshot_date per service
 pivot = df.groupby(['snapshot_date', 'service_name'])['shop_id'].nunique().unstack(fill_value=0)
 
-# --- 1. Weekly Trend by Service (Last 2 Weeks, Percentage) ---
-# Subset for the last 2 weeks
-two_week_pivot = pivot.tail(2)
-
-# Calculate row-wise percentages (each week totals 100%)
-two_week_pct = two_week_pivot.div(two_week_pivot.sum(axis=1), axis=0) * 100
-
-st.subheader("Weekly Trend by Service (Last 2 Weeks, Percentage)")
+# --- 1. Line Chart: Weekly Trend by Service (All Data) ---
+st.subheader("Weekly Trend by Service (All Data)")
 fig, ax = plt.subplots(figsize=(10, 6))
-for service in two_week_pct.columns:
-    ax.plot(two_week_pct.index, two_week_pct[service], marker='o', label=service)
+for service in pivot.columns:
+    ax.plot(pivot.index, pivot[service], marker='o', label=service)
 
-ax.set_title("Percentage of Active Shops per Service (Last 2 Weeks)")
+ax.set_title("Weekly Active Shops per Service")
 ax.set_xlabel("Snapshot Date")
-ax.set_ylabel("Percentage (%)")
+ax.set_ylabel("Number of Shops")
 ax.legend(title="Service", bbox_to_anchor=(1.05, 1), loc='upper left')
 ax.grid(True)
 st.pyplot(fig)
 
-# --- 2. Snapshot Comparison: Latest vs Previous vs Before Previous vs Overall Average ---
+# --- 2. Bar Chart: Snapshot Comparison ---
 st.subheader("Snapshot Comparison")
-
-# Check if there are at least 3 snapshots; if not, use available data
+# Ensure there is at least one snapshot; if many exist, you might select the last few for comparison.
 if len(pivot) >= 3:
     latest = pivot.iloc[-1]
     previous = pivot.iloc[-2]
@@ -72,9 +63,8 @@ else:
     previous = pivot.iloc[-2] if len(pivot) >= 2 else latest
     before_previous = latest
 
-overall_avg = pivot.mean()  # overall average across all snapshots
+overall_avg = pivot.mean()
 
-# Combine into a DataFrame for easier plotting
 comparison_df = pd.DataFrame({
     'Latest': latest,
     'Previous': previous,
@@ -82,7 +72,6 @@ comparison_df = pd.DataFrame({
     'Overall Average': overall_avg
 })
 
-# Plot grouped bar chart for each service
 services = comparison_df.index.tolist()
 x = range(len(services))
 width = 0.2
