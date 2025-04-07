@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import mysql.connector
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 # --- Page Setup ---
 st.set_page_config(page_title="Service Usage Dashboard", layout="wide")
@@ -17,7 +18,7 @@ def load_data():
         password=st.secrets["mysql"]["password"],
         database=st.secrets["mysql"]["database"]
     )
-
+    
     query = """
     SELECT
         msu.shop_id,
@@ -49,11 +50,21 @@ ax.set_xlabel("Snapshot Date")
 ax.set_ylabel("Number of Shops")
 ax.legend(title="Service", bbox_to_anchor=(1.05, 1), loc='upper left')
 ax.grid(True)
+
+# Limit the x-axis to the actual data range so that the data isn't squished
+min_date = pivot.index.min()
+max_date = pivot.index.max()
+ax.set_xlim([min_date, max_date])
+
+# Format the x-axis to show dates at 7-day intervals
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+ax.xaxis.set_major_locator(mdates.DayLocator(interval=7))
+plt.xticks(rotation=45)
+
 st.pyplot(fig)
 
 # --- 2. Bar Chart: Snapshot Comparison ---
 st.subheader("Snapshot Comparison")
-# Ensure there is at least one snapshot; if many exist, you might select the last few for comparison.
 if len(pivot) >= 3:
     latest = pivot.iloc[-1]
     previous = pivot.iloc[-2]
@@ -63,7 +74,7 @@ else:
     previous = pivot.iloc[-2] if len(pivot) >= 2 else latest
     before_previous = latest
 
-overall_avg = pivot.mean()
+overall_avg = pivot.mean()  # Overall average usage per service
 
 comparison_df = pd.DataFrame({
     'Latest': latest,
@@ -72,6 +83,7 @@ comparison_df = pd.DataFrame({
     'Overall Average': overall_avg
 })
 
+# Plot grouped bar chart for each service
 services = comparison_df.index.tolist()
 x = range(len(services))
 width = 0.2
