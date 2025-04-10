@@ -58,7 +58,7 @@ if uploaded_file is not None:
     bars = plt.bar(order_counts.index, order_counts.values, color='skyblue', width=8000)
     for bar in bars:
         yval = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2, yval, int(yval), ha='center', va='bottom')
+        plt.text(bar.get_x() + bar.get_width() / 2, yval, int(yval), ha='center', va='bottom')
     xticks_labels = [f">{i // 10000}.0" if i == 200000 else f"{i // 10000}.0" for i in full_range]
     plt.xticks(ticks=full_range, labels=xticks_labels, rotation=45)
     plt.xlabel('Order Amount Range (KRW)')
@@ -78,7 +78,7 @@ if uploaded_file is not None:
     bars = plt.bar(order_counts.index, order_percentages.values, color='skyblue', width=8000)
     for bar in bars:
         yval = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2, yval, f"{yval:.1f}%", ha='center', va='bottom')
+        plt.text(bar.get_x() + bar.get_width() / 2, yval, f"{yval:.1f}%", ha='center', va='bottom')
     plt.xticks(ticks=full_range, labels=xticks_labels, rotation=45)
     plt.xlabel('Order Amount Range (KRW)')
     plt.ylabel('Percentage (%)')
@@ -103,7 +103,7 @@ if uploaded_file is not None:
         bars = plt.bar(upsell_order_counts.index, upsell_order_counts.values, color='orange', width=8000)
         for bar in bars:
             yval = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width()/2, yval, int(yval), ha='center', va='bottom')
+            plt.text(bar.get_x() + bar.get_width() / 2, yval, int(yval), ha='center', va='bottom')
         plt.xticks(ticks=full_range, labels=xticks_labels, rotation=45)
         plt.xlabel('Order Amount Range (KRW)')
         plt.ylabel('Number of Orders')
@@ -118,7 +118,7 @@ if uploaded_file is not None:
         bars = plt.bar(upsell_order_counts.index, upsell_order_percentages.values, color='orange', width=8000)
         for bar in bars:
             yval = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width()/2, yval, f"{yval:.1f}%", ha='center', va='bottom')
+            plt.text(bar.get_x() + bar.get_width() / 2, yval, f"{yval:.1f}%", ha='center', va='bottom')
         plt.xticks(ticks=full_range, labels=xticks_labels, rotation=45)
         plt.xlabel('Order Amount Range (KRW)')
         plt.ylabel('Percentage (%)')
@@ -138,11 +138,27 @@ if uploaded_file is not None:
     st.write("**Order Counts by Number of Items:**")
     st.write(product_count_distribution)
     
-    # Pie chart for the distribution of items per order with cleaner colors (using Pastel1 colormap)
+    # ----- Pie Chart: Combine slices with less than 3% into "Others" -----
+    total_items_orders = product_count_distribution.sum()
+    labels = []
+    values = []
+    others_sum = 0
+    for item_count, count in product_count_distribution.items():
+        percentage = (count / total_items_orders) * 100
+        if percentage < 3:
+            others_sum += count
+        else:
+            labels.append(str(item_count))
+            values.append(count)
+    if others_sum > 0:
+        labels.append("Others")
+        values.append(others_sum)
+    
+    # Create pie chart using a cleaner color palette (Pastel1 colormap)
     fig_items, ax_items = plt.subplots(figsize=(8, 8))
-    colors = plt.get_cmap('Pastel1').colors
-    ax_items.pie(product_count_distribution.values,
-                 labels=product_count_distribution.index.astype(str),
+    colors = plt.get_cmap('Pastel1').colors  # Use Pastel1 for a clean look
+    ax_items.pie(values,
+                 labels=labels,
                  autopct='%1.1f%%',
                  startangle=90,
                  colors=colors)
@@ -150,7 +166,7 @@ if uploaded_file is not None:
     ax_items.set_title('Distribution of Items per Order (Pie Chart)')
     st.pyplot(fig_items)
     
-    # Bar chart for the distribution of items per order
+    # ----- Bar Chart: Original distribution (not grouped as Others) -----
     fig_items_bar, ax_items_bar = plt.subplots(figsize=(10, 6))
     bars = ax_items_bar.bar(product_count_distribution.index.astype(str),
                             product_count_distribution.values,
