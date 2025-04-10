@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# Title (in English)
+# Title in English
 st.title('Order Price and Items Distribution Analysis v1.3')
 
 # CSV file uploader
@@ -25,7 +25,7 @@ if uploaded_file is not None:
     # 1. Member vs Guest Order Share
     st.write("### 1. Member vs Guest Order Share")
     
-    # Create a column for membership: if '주문자 아이디' is missing or empty, consider as Guest; otherwise, Member.
+    # Create membership indicator column
     data['회원여부'] = data['주문자 아이디'].apply(lambda x: 'Guest' if pd.isna(x) or str(x).strip() == '' else 'Member')
     member_counts = data['회원여부'].value_counts()
     total_orders_member = member_counts.sum()
@@ -126,10 +126,10 @@ if uploaded_file is not None:
         st.pyplot(plt)
     
     # ----------------------------------------------------------------
-    # 5. Distribution of Items per Order (All Orders) - Pie Chart
+    # 5. Distribution of Items per Order (All Orders)
     st.write("### 5. Distribution of Items per Order (All Orders)")
     
-    # Group raw_data by '주문번호' and count the number of rows (items) per order
+    # Group raw_data by '주문번호' to count the number of items per order
     order_items = raw_data.groupby('주문번호').size().reset_index(name='ItemCount')
     st.write("**Example of Items per Order (Top 5):**")
     st.write(order_items.head())
@@ -138,13 +138,30 @@ if uploaded_file is not None:
     st.write("**Order Counts by Number of Items:**")
     st.write(product_count_distribution)
     
-    # Pie chart for the distribution of items per order
+    # Pie chart for the distribution of items per order with cleaner colors (using Pastel1 colormap)
     fig_items, ax_items = plt.subplots(figsize=(8, 8))
-    ax_items.pie(product_count_distribution.values, labels=product_count_distribution.index.astype(str),
-                 autopct='%1.1f%%', startangle=90)
+    colors = plt.get_cmap('Pastel1').colors
+    ax_items.pie(product_count_distribution.values,
+                 labels=product_count_distribution.index.astype(str),
+                 autopct='%1.1f%%',
+                 startangle=90,
+                 colors=colors)
     ax_items.axis('equal')
-    ax_items.set_title('Distribution of Items per Order (All Orders)')
+    ax_items.set_title('Distribution of Items per Order (Pie Chart)')
     st.pyplot(fig_items)
+    
+    # Bar chart for the distribution of items per order
+    fig_items_bar, ax_items_bar = plt.subplots(figsize=(10, 6))
+    bars = ax_items_bar.bar(product_count_distribution.index.astype(str),
+                            product_count_distribution.values,
+                            color='seagreen')
+    ax_items_bar.set_xlabel('Number of Items per Order')
+    ax_items_bar.set_ylabel('Number of Orders')
+    ax_items_bar.set_title('Distribution of Items per Order (Bar Chart)')
+    for bar in bars:
+        yval = bar.get_height()
+        ax_items_bar.text(bar.get_x() + bar.get_width() / 2, yval, int(yval), ha='center', va='bottom')
+    st.pyplot(fig_items_bar)
     
 else:
     st.write("Please use the CSV file downloaded by clicking the 'Export' button in the order list.")
