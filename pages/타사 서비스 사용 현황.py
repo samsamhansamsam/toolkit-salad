@@ -18,7 +18,8 @@ def load_data():
         port=st.secrets["mysql"]["port"],
         user=st.secrets["mysql"]["user"],
         password=st.secrets["mysql"]["password"],
-        database=st.secrets["mysql"]["database"]
+        database=st.secrets["mysql"]["database"],
+        auth_plugin='mysql_native_password'
     )
     
     query = """
