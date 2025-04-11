@@ -3,5 +3,4 @@ pandas
 matplotlib
 mysql-connector-python
 numpy
-itertools
 mysql.connector
