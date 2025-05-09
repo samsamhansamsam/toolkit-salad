@@ -46,16 +46,19 @@ if uploaded_file is not None:
     # 0. 평균 객단가 계산 및 표시
     avg_order_value = data['총 주문 금액'].mean()
 
-    # 0-1. 분석 기간 계산 (원본 raw_data의 주문일 기준)
+    # 0-1. 분석 기간 계산 (원본 raw_data의 '주문일' 기준)
     raw_data['주문일'] = pd.to_datetime(raw_data['주문일'], errors='coerce')
-    start_date = raw_data['주문일'].min().strftime('%Y-%m-%d')
-    end_date   = raw_data['주문일'].max().strftime('%Y-%m-%d')
+    start_date_dt = raw_data['주문일'].min()
+    end_date_dt   = raw_data['주문일'].max()
+    start_date    = start_date_dt.strftime('%Y-%m-%d')
+    end_date      = end_date_dt.strftime('%Y-%m-%d')
+    period_days   = (end_date_dt - start_date_dt).days + 1  # 포함 일수
 
     st.subheader("0. 평균 객단가 (Average Order Value)")
     st.metric(label="평균 객단가", value=f"{avg_order_value:,.0f} KRW")
 
-    # 0-2. 분석 기간 표시
-    st.write(f"**분석 기간:** {start_date} ~ {end_date}")
+    # 0-2. 분석 기간 및 총 일수 표시
+    st.write(f"**분석 기간:** {start_date} ~ {end_date} ({period_days}일)")
     
     # ----------------------------------------------------------------
 
