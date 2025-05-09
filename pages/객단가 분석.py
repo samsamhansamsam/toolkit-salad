@@ -57,7 +57,6 @@ if uploaded_file is not None:
 
     # 0-3. 평균 객단가 계산 및 표시
     avg_order_value = data['총 주문 금액'].mean()
-    st.subheader("0. 평균 객단가 (Average Order Value)")
     st.metric(label="평균 객단가", value=f"{avg_order_value:,.0f} KRW")
 
     # 0-4. 분석 기간 및 총 일수 표시
