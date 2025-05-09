@@ -2,17 +2,19 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# 페이지 설정: 와이드 레이아웃 + 최대 너비 1200px 제한
+
 st.set_page_config(
     page_title='Order Price and Items Distribution Analysis v1.3',
     layout='wide'
 )
+# CSS로 콘텐츠 영역 너비 800px, 좌측 정렬
 st.markdown(
     """
     <style>
-    /* main 컨테이너 최대 너비를 1200px로 제한 */
     .block-container {
-        max-width: 1200px;
+        max-width: 800px !important;
+        margin-left: 0 !important;
+        margin-right: auto !important;
         padding-left: 1rem;
         padding-right: 1rem;
     }
