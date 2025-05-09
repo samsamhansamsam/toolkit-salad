@@ -24,7 +24,7 @@ st.markdown(
 )
 
 # Title in English
-st.title('Order Price and Items Distribution Analysis v1.3')
+st.title('Order Price and Items Distribution Analysis v1.31')
 
 # CSV file uploader
 uploaded_file = st.file_uploader("Upload CSV file.", type="csv")
