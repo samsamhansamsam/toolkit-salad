@@ -20,6 +20,12 @@ if uploaded_file is not None:
     data = raw_data.copy()
     data = data.sort_values(by=['일반/업셀 구분'], ascending=False)
     data = data.drop_duplicates(subset=['주문번호'], keep='last')
+
+    # ----------------------------------------------------------------
+    # 0. 평균 객단가 계산 및 표시 추가
+    avg_order_value = data['총 주문 금액'].mean()  # 평균 객단가 계산
+    st.subheader("0. 평균 객단가 (Average Order Value)")
+    st.metric(label="평균 객단가", value=f"{avg_order_value:,.0f} KRW")
     
     # ----------------------------------------------------------------
     # 1. Member vs Guest Order Share
