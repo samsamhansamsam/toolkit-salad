@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 st.set_page_config(
-    page_title='Order Price and Items Distribution Analysis v1.3',
+    page_title='Order Price and Items Distribution Analysis v1.31',
     layout='wide'
 )
 # CSS로 콘텐츠 영역 너비 800px, 좌측 정렬
