@@ -43,12 +43,22 @@ if uploaded_file is not None:
     data = data.drop_duplicates(subset=['주문번호'], keep='last')
 
     # ----------------------------------------------------------------
-    # 0. 평균 객단가 계산 및 표시 추가
-    avg_order_value = data['총 주문 금액'].mean()  # 평균 객단가 계산
+    # 0. 평균 객단가 계산 및 표시
+    avg_order_value = data['총 주문 금액'].mean()
+
+    # 0-1. 분석 기간 계산 (원본 raw_data의 주문일자 기준)
+    raw_data['주문일자'] = pd.to_datetime(raw_data['주문일자'], errors='coerce')
+    start_date = raw_data['주문일자'].min().strftime('%Y-%m-%d')
+    end_date   = raw_data['주문일자'].max().strftime('%Y-%m-%d')
+
     st.subheader("0. 평균 객단가 (Average Order Value)")
     st.metric(label="평균 객단가", value=f"{avg_order_value:,.0f} KRW")
+
+    # 0-2. 분석 기간 표시
+    st.write(f"**분석 기간:** {start_date} ~ {end_date}")
     
     # ----------------------------------------------------------------
+
     # 1. Member vs Guest Order Share
     st.write("### 1. Member vs Guest Order Share")
     
