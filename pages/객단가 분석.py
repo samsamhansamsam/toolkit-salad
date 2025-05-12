@@ -198,15 +198,35 @@ if uploaded_file is not None:
         values.append(others_sum)
     
     # Create pie chart using a cleaner color palette (Pastel1 colormap)
+    # ----- Pie Chart 개선된 버전 -----
     fig_items, ax_items = plt.subplots(figsize=(8, 8))
-    colors = plt.get_cmap('Pastel1').colors  # Use Pastel1 for a clean look
-    ax_items.pie(values,
-                 labels=labels,
-                 autopct='%1.1f%%',
-                 startangle=90,
-                 colors=colors)
+    colors = plt.get_cmap('Pastel1').colors
+
+    # explode 조정 (1개만 강조하거나 전체를 조금 띄우기)
+    explode = [0.03] * len(values)  
+
+    # pie chart
+    wedges, texts, autotexts = ax_items.pie(
+        values,
+        labels=labels,
+        autopct='%1.1f%%',
+        startangle=90,
+        colors=colors,
+        explode=explode,
+        pctdistance=0.8,
+        labeldistance=1.05
+    )
+
+    # 텍스트 스타일 조정
+    for text in texts:
+        text.set_fontsize(12)
+        text.set_horizontalalignment('left')
+    for autotext in autotexts:
+        autotext.set_fontsize(11)
+        autotext.set_color('black')
+
     ax_items.axis('equal')
-    ax_items.set_title('Distribution of Items per Order (Pie Chart)')
+    ax_items.set_title('Distribution of Items per Order (Pie Chart)', fontsize=14)
     st.pyplot(fig_items)
     
     # ----- Bar Chart: Original distribution (not grouped as Others) -----
