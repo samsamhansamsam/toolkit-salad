@@ -210,7 +210,7 @@ if uploaded_file is not None:
         values,
         labels=labels,
         autopct='%1.1f%%',
-        startangle=90,
+        startangle=0,
         colors=colors,
         explode=explode,
         pctdistance=0.8,
