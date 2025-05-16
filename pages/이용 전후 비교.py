@@ -4,8 +4,27 @@ import math
 from datetime import timedelta
 import altair as alt
 
+
+
+
 st.set_page_config(page_title="이용 전후 비교", layout="wide")
 st.title("📊 이용 전후 비교")
+
+# CSS로 콘텐츠 영역 너비 800px, 좌측 정렬
+st.markdown(
+    """
+    <style>
+    .block-container {
+        max-width: 800px !important;
+        margin-left: 50px !important;
+        margin-right: auto !important;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # 1) CSV 업로드
 uploaded_file = st.file_uploader("📂 주문 데이터 CSV 업로드", type="csv")
