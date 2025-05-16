@@ -87,7 +87,7 @@ df_amount = pd.DataFrame({
 # 2) 공통 스케일 & 축 설정 (0%~최대*1.1, tickCount=5)
 max_val    = max(df_items['비중'].max(), df_amount['비중'].max())
 y_scale    = alt.Scale(domain=[0, max_val * 1.1], nice=False)
-y_axis     = alt.Axis(title='비중', format='.0%', tickCount=5, grid=True)
+y_axis     = alt.Axis(title='', format='.0%', tickCount=5, grid=True)
 
 # 3) 차트 생성 함수
 def make_chart(df, title, delta, thresh_label):
@@ -95,7 +95,15 @@ def make_chart(df, title, delta, thresh_label):
         alt.Chart(df)
         .mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4)
         .encode(
-            x=alt.X('기간:O', axis=alt.Axis(labelAngle=0, domain=False, ticks=False)),
+            x=alt.X(
+                '기간:O',
+                axis=alt.Axis(
+                    labelAngle=0,
+                    domain=False,
+                    ticks=False,
+                    title=None        # ← 여기서 축 제목 제거
+                )
+            ),
             y=alt.Y('비중:Q', axis=y_axis, scale=y_scale),
             color=alt.Color('기간:N',
                             scale=alt.Scale(range=['#4c78a8','#f58518']),
@@ -117,7 +125,7 @@ def make_chart(df, title, delta, thresh_label):
             'delta': [delta]
         }))
         .mark_text(
-            dy=-40, fontSize=12, color='yellow', fontWeight='bold'
+            dy=-40, fontSize=20, color='yellow', fontWeight='bold'
         )
         .encode(
             x='기간:O',
