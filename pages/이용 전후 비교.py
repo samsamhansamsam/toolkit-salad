@@ -141,6 +141,7 @@ def make_chart(df, title, delta, thresh_label):
 
 # 4) 차트 그리기
 st.markdown("## 📈 비중 변화 그래프")
+st.write("")
 col1, col2 = st.columns(2)
 
 with col1:
