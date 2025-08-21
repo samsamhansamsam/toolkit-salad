@@ -2,6 +2,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import textwrap
+import streamlit.components.v1 as components
 import matplotlib.pyplot as plt
 from datetime import timedelta
 from io import StringIO
@@ -59,19 +61,23 @@ with st.sidebar:
 # =========================================
 st.markdown("""
 <style>
+/* 라이트/다크 테마 상관없이 본문 가독성 확보 */
 .block-container { max-width: 880px; margin-left: 40px; }
-.h1 { font-size: 26px; font-weight: 800; margin: 6px 0 18px; }
-.h2 { font-size: 20px; font-weight: 800; margin: 22px 0 10px; }
-.h3 { font-size: 16px; font-weight: 700; margin: 16px 0 6px; }
-.tbl th, .tbl td { padding: 6px 8px; font-size: 14px; }
-.kpi { display:grid; grid-template-columns: repeat(3,1fr); gap:10px; }
-.k { border:1px solid #e5e7eb; border-radius:10px; padding:12px; background:#fafafa; }
-.k .lab { color:#6b7280; font-size:12px; margin-bottom:6px; }
-.k .val { font-size:18px; font-weight:700; }
-.callout { border-left:4px solid #2563eb; background:#f3f8ff; padding:12px 14px; border-radius:6px; }
-.gray { color:#6b7280; }
-.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono"; }
-hr { border: none; height: 1px; background: #e5e7eb; margin: 18px 0; }
+.callout {
+  border-left: 4px solid #2563eb;
+  background: #f3f8ff;            /* 밝은 하늘색 배경 고정 */
+  padding: 12px 14px;
+  border-radius: 6px;
+  color: #111 !important;          /* 텍스트 항상 진한 회색/검정 */
+}
+.callout * { color: #111 !important; }       /* 내부 strong, em, code 등도 강제 */
+.highlight-badge { background:#eaf2ff; color:#111; padding:2px 6px; border-radius:4px; }
+
+/* 인라인 코드가 테마에 따라 흐려지는 문제 방지 */
+code, .mono { color:#111 !important; }
+
+/* 표 글자색 강제 */
+table, th, td { color:#111 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -144,6 +150,152 @@ items_upsell_avg = float(items_per_order.loc[items_per_order.index.isin(upsell_o
 # 비율계산
 ratio_upsell_conv = (upsell_conv_amount / orders_total_sum * 100.0) if orders_total_sum else 0.0
 ratio_upsell_together = (upsell_together_amount / orders_total_sum * 100.0) if (orders_total_sum and upsell_together_amount is not None) else None
+
+# =========================================
+# 4) 0. 복사용
+# =========================================
+
+def build_notion_md(
+    start_date, end_date, period_days,
+    orders_total_sum, upsell_conv_amount, upsell_together_amount,
+    ratio_upsell_conv, ratio_upsell_together,
+    aov_all, aov_upsell_orders, aov_lift_pct, aov_diff,
+    items_all_avg, items_upsell_avg, items_diff,
+    recent_one_pct=None, recent_bins_all=None, recent_bins_up=None,
+    recent_month_orders=None
+) -> str:
+    """보고서 섹션을 노션 친화적 마크다운으로 변환."""
+    # 금액/비율 표
+    tbl1 = [
+        "|  | 주문금액(원) | 비율(%) |",
+        "| --- | ---: | ---: |",
+        f"| 전체주문 | {round(orders_total_sum):,} |  |",
+        f"| [업셀]전환주문 | {round(upsell_conv_amount):,} | **`{ratio_upsell_conv:,.2f}%`** |",
+        f"| [업셀]함께구매주문금액 | " +
+        (f"{round(upsell_together_amount):,}" if upsell_together_amount is not None else "N/A") +
+        " | " + (f"**`{ratio_upsell_together:,.2f}%`**" if ratio_upsell_together is not None else "N/A") + " |"
+    ]
+    # 객단가 표
+    tbl2 = [
+        "|  | 객단가(원) |  |",
+        "| --- | ---: | --- |",
+        f"| 전체주문 | {round(aov_all):,} |  |",
+        f"| [업셀]함께구매주문금액 | {round(aov_upsell_orders):,} | **+{round(aov_diff):,}원(`{aov_lift_pct:.2f}%` 🆙)** |",
+    ]
+    # 상품수 표
+    tbl3 = [
+        "|  | 주문 당 평균 상품 수(개) |  |",
+        "| --- | ---: | --- |",
+        f"| 전체주문 | {items_all_avg:.1f} |  |",
+        f"| [업셀]함께구매주문금액 | **{items_upsell_avg:.1f}** | **`+{items_diff:.1f}개`** 🆙 |"
+    ]
+
+    # 최근30일 코멘트
+    recent_hint = (f"\n> 1개만 구매하고 쇼핑이 끝나는 **`{recent_one_pct:.1f}%`** 고객에게 추가구매 이유 만들기 🔥\n"
+                   if recent_one_pct is not None else "")
+
+    # 객단가 분포 텍스트(간단 요약)
+    def bins_to_md(bins):
+        if not bins: return ""
+        lines = ["- 객단가 히스토그램 상위 구간(최근 30일):"]
+        for label, cnt in bins[:6]:           # 상위 몇 개만
+            lines.append(f"  - {label}: {cnt}건")
+        return "\n".join(lines)
+
+    # 구독료 안내
+    sub_fee = ""
+    if recent_month_orders is not None:
+        sub_fee = textwrap.dedent(f"""
+        ## 4. 구독료안내
+
+        - 최근 한달 주문 수 **{recent_month_orders:,}건**
+        - 월 **~~800,000원~~ 540,000원**(부가세별도) **`엔터프라이즈3`** (월주문수 한도: ~20,000건)
+        - `스페셜오퍼`: **한 단계 낮은 플랜으로**
+        - 조건 : 6개월 또는 12개월 선납
+          - 6개월 = 3,240,000
+          - 12개월 = 6,480,000
+
+        > **📌 연간 구독 시** 12개월간 납부한 구독료로 (주문수 연관없이) **추가요금 없음**
+        """).strip()
+
+    md = f"""
+# 1. 알파업셀성과
+
+## 📊요약
+- 기간 : {start_date} ~ {end_date} `{period_days}일간`
+
+{chr(10).join(tbl1)}
+
+{chr(10).join(tbl2)}
+
+{chr(10).join(tbl3)}
+
+- 벤치마크 지표
+  - 전체주문금액 중 [업셀]전환주문 비율 : 전체평균 7.14% **대비 {'높음' if ratio_upsell_conv>=7.14 else '낮음' if ratio_upsell_conv<=7.14 else '비슷'}** `{ratio_upsell_conv:.2f}%`
+  - 전체주문금액 중 [업셀]함께구매주문금액 비율 : 전체평균 3.17% **대비 {"N/A" if ratio_upsell_together is None else ("높음" if ratio_upsell_together>=3.17 else "낮음")}** {"" if ratio_upsell_together is None else f"`{ratio_upsell_together:.2f}%`"}
+  - [전체주문 vs 업셀주문] 객단가 : 전체평균 34%⤴️ **대비 {'높음' if aov_lift_pct>=34 else '낮음'} `{aov_lift_pct:.2f}%` 🆙**
+  - 주문 당 평균 상품수 : 전체평균 0.7개 대비 **{'높음' if items_diff>=0.7 else '낮음'}  `+{items_diff:.1f}개`** ⤴️
+
+> 💡 인사이트  
+> - 주문금액 공헌도: 평균 대비 비슷/낮음 여부 체크. 체험 후반부 우상향이면 **금액별 할인**과의 상관관계를 추가 관찰  
+> - 📌 성과 한계: 특정 상품(예: 정기배송 상세)에 위젯 노출 제한 가능 → 적용 범위 점검  
+> - 세일즈 적극도(위젯 활용도): 별도 데이터 제공 시 `고객당 추천수` 표기
+
+---
+
+# 2. 자사몰현황(최근 30일 🗓️)
+
+## 주문 당 구매품목수
+{recent_hint}
+
+## 객단가분포
+### 1) 전체주문 객단가분포
+{bins_to_md(recent_bins_all)}
+
+### 2) [업셀] 함께구매주문 객단가분포
+{bins_to_md(recent_bins_up)}
+
+---
+
+# 3. 성과 제고를 위한 액션 🏃🏻
+- 위젯 충분 활용? 🏹
+- 상위고객에 추가구매 사유 제공? 🔥
+- 구매버튼 인접/CTA 하단/장바구니 등 **다중 접점** 테스트
+- 프로모션(금액/수량/묶음)과 업셀 상관관계 A/B 확인
+- 타이틀 문구/썸네일 비율/테두리 등 피드 시각 개선
+
+---
+
+{sub_fee}
+""".strip()
+
+    return md
+
+def copy_to_clipboard_ui(text: str, label: str = "노션용 마크다운 복사"):
+    """노션에 그대로 붙여넣도록 복사 버튼 + 미리보기 텍스트 에어리어."""
+    # 텍스트 영역(사용자가 내용 확인/수정 후 복사 가능)
+    st.text_area("미리보기 (편집 가능)", value=text, height=300)
+    # JS 복사 버튼
+    components.html(f"""
+    <button id="copy-btn" style="padding:8px 12px;border-radius:8px;border:1px solid #e5e7eb;cursor:pointer;">
+      {label}
+    </button>
+    <script>
+      const btn = document.getElementById('copy-btn');
+      btn.addEventListener('click', async () => {{
+        try {{
+          const ta = window.parent.document.querySelector('textarea');
+          await navigator.clipboard.writeText(ta.value);
+          btn.innerText = '복사됨 ✓';
+          setTimeout(() => btn.innerText = '{label}', 1500);
+        }} catch (e) {{
+          btn.innerText = '복사 실패';
+          setTimeout(() => btn.innerText = '{label}', 1500);
+        }}
+      }});
+    </script>
+    """, height=60)
+
 
 # =========================================
 # 4) 1. 알파업셀성과 — 요약 테이블들
@@ -351,3 +503,41 @@ st.markdown("""
 # =========================================
 st.markdown("---")
 st.caption("※ [업셀]함께구매주문금액은 라인금액(또는 단가×수량) 제공 시 산출됩니다. 없는 경우 전환주문/비율, AOV, 상품수는 정상 산출됩니다.")
+
+# =========================================
+# 9) 노션 복사용
+# =========================================
+
+# --- 노션용 마크다운 만들기 ---
+# 최근 30일의 '1개만 구매' 비중
+recent_one_pct = None
+if 1 in dist.index and total_recent_orders:
+    recent_one_pct = dist.loc[1]/total_recent_orders*100.0
+
+# 객단가 히스토 상위 구간 텍스트(간단 집계) - 최근30일 전체/업셀
+def top_bins(series):
+    # series: value_counts index가 0, 10000, ... 형태; 라벨 포맷으로 변환
+    pairs = []
+    for i, cnt in zip(series.index.tolist(), series.values.tolist()):
+        label = f">{200000//10000}.0" if i==200000 else f"{i//10000}.0"
+        pairs.append((label, int(cnt)))
+    pairs.sort(key=lambda x: x[1], reverse=True)
+    return pairs
+
+recent_bins_all = top_bins(vc_all) if 'vc_all' in locals() else None
+recent_bins_up  = top_bins(vc_up) if 'vc_up' in locals() else None
+
+md_for_notion = build_notion_md(
+    start_date, end_date, period_days,
+    orders_total_sum, upsell_conv_amount, upsell_together_amount,
+    ratio_upsell_conv, ratio_upsell_together,
+    aov_all, aov_upsell_orders, aov_lift_pct, aov_diff,
+    items_all_avg, items_upsell_avg, items_diff,
+    recent_one_pct=recent_one_pct,
+    recent_bins_all=recent_bins_all,
+    recent_bins_up=recent_bins_up if ('vc_up' in locals()) else None,
+    recent_month_orders=recent_month_orders
+)
+
+st.markdown("### 노션 공유용 마크다운")
+copy_to_clipboard_ui(md_for_notion, label="노션용 마크다운 복사")
