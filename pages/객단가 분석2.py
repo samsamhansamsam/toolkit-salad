@@ -1,257 +1,447 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
-import os
+from io import BytesIO
 
-st.set_page_config(
-    page_title='Order Price and Items Distribution Analysis v1.31',
-    layout='wide'
-)
+# ----------------------------
+# Page / Style
+# ----------------------------
+st.set_page_config(page_title="Order Report v2 (Narrative)", layout="wide")
 
-# CSS for content width and alignment
+REPORT_WIDTH = 820
+
 st.markdown(
-    """
+    f"""
     <style>
-    .block-container {
-        max-width: 800px !important;
+    .block-container {{
+        max-width: {REPORT_WIDTH}px !important;
         margin-left: 50px !important;
         margin-right: auto !important;
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        line-height: 1.5;
+    }}
+    .report-title {{
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }}
+    .report-subtle {{
+        color: #6b7280;
+        font-size: 13px;
+        margin-bottom: 18px;
+    }}
+    .kpi-grid {{
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin: 8px 0 18px 0;
+    }}
+    .kpi-card {{
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 14px 16px;
+        background: #fafafa;
+    }}
+    .kpi-label {{
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 6px;
+    }}
+    .kpi-value {{
+        font-size: 18px;
+        font-weight: 700;
+    }}
+    .callout {{
+        border-left: 4px solid #2563eb;
+        background: #f3f8ff;
+        padding: 12px 14px;
+        margin: 12px 0;
+        border-radius: 6px;
+        font-size: 14px;
+    }}
+    .h2 {{
+        font-size: 20px;
+        font-weight: 700;
+        margin-top: 22px;
+        margin-bottom: 10px;
+    }}
+    .h3 {{
+        font-size: 16px;
+        font-weight: 700;
+        margin-top: 14px;
+        margin-bottom: 6px;
+    }}
+    .mono {{
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 13px;
+        color: #374151;
+    }}
+    ul.tight > li {{ margin-bottom: 4px; }}
     </style>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
-st.title('Order Price and Items Distribution Analysis v1.31')
+st.markdown('<div class="report-title">주문 리포트 (자동 요약 & 인사이트)</div>', unsafe_allow_html=True)
+st.markdown('<div class="report-subtle">Order Report v2 — 본문 800px, 내러티브/시각화/다운로드 포함</div>', unsafe_allow_html=True)
 
-uploaded_file = st.file_uploader("Upload CSV file.", type="csv")
-
-
-def generate_markdown_report(
-    period_info, total_revenue, upsell_conversion, upsell_bundle,
-    avg_order_value, avg_bundle_order_value, avg_items_all, avg_items_bundle,
-    benchmark_data, widget_stats, promotion_data, subscription_data
-):
-    md = f"""
-# 1. 알파업셀성과
-
-## 📊 요약
-- 기간 : {period_info}
-- 주문금액(원)
-  - 전체주문 : {total_revenue:,}
-  - [업셀]전환주문 : {upsell_conversion:,}
-  - **`{benchmark_data['conversion_rate']:.2f}%`**
-  - [업셀]함께구매주문금액 : {upsell_bundle:,}
-  - **`{benchmark_data['bundle_rate']:.2f}%`**
-- 객단가(원)
-  - 전체주문 : {int(avg_order_value):,}
-  - [업셀]함께구매주문금액 : {int(avg_bundle_order_value):,}
-  - **+{int(avg_bundle_order_value - avg_order_value):,}원(`{benchmark_data['bundle_order_rate']}` 🆙)**
-- 주문 당 평균 상품 수(개)
-  - 전체주문 : {avg_items_all:.1f}
-  - [업셀]함께구매주문금액 : **{avg_items_bundle:.1f}**
-  - **`+{avg_items_bundle - avg_items_all:.1f}개`** 🆙
-
-## 벤치마크 지표
-- 전체주문금액 중 [업셀]전환주문 비율 : 전체평균 7.14% **대비 비슷** `{benchmark_data['conversion_rate']:.2f}%`
-- 전체주문금액 중 [업셀]함께구매주문금액 비율 : 전체평균 3.17% **대비 낮음** `{benchmark_data['bundle_rate']:.2f}%`
-- [전체주문 vs 업셀주문] 객단가 : 전체평균 34%⤴️ **대비 높음** `{benchmark_data['bundle_order_rate']} 🆙`
-- 주문 당 평균 상품수 : 전체평균 0.7개 대비 **높음** **`+{avg_items_bundle - 0.7:.1f}개`** ⤴️
-
-> 💡
-> 주문금액 공헌도 : 평균 대비 비슷하거나, 낮음
-> 체험 후반으로 갈수록 완만한 우상향 추세
-> 금액별 할인 프로모션 사용과 성과 상관관계 지켜보기
-> 📌 성과한계 : 정기배송 상품의 상세페이지에는 위젯이 노출 되지 않음
-> 세일즈 적극도(위젯 활용도) : 고객당 상품추천수 **`{widget_stats['avg_recommend_per_customer']}`** 으로 평균 약 9.1건 대비 높음
-> 인사이트 메뉴에서 지표 확인하기
-> [무라벨 530mL] 닥터유 제주용암수 530mL×20병 **`제주용암수`** 업셀링 순위 확인
-
-
-# 2. 자사몰현황 ({widget_stats['recent_period_start']} ~ {widget_stats['recent_period_end']})
-*최근30일 🗓️*
-
-## 주문 당 구매품목수
-- 고객의 {widget_stats['single_item_pct']:.1f}%는 1개만 구매하고 쇼핑이 종료됨
-- 추가 구매할 이유 만들어 주기 🔥
-
-## 객단가분포
-1. 전체주문 객단가분포
-🚚무료배송 `2만원` 이상
-
-2. [업셀] 함께구매주문 객단가분포
-
-
-# 3. 성과 제고를 위한 액션 🏃🏻
-> 💡
-> 위젯을 충분히 활용하고 있는가? 🏹🏹
-> 구매력 있는 상위고객에게 추가구매할 이유를 만들어 주고 있는가? 🔥🔥
-
-### 1️⃣ 추가사용 추천위젯
-구매버튼클릭 (함께 구매 주문 금액 2위)
-
-✅ 상세페이지최하단위젯 : (복수사용 예시)
-[예시](https://verish.me/shop1/product/detail.html?product_no=83)
-
-⚡️ 위젯별 성과
-| 순위 | 전환 주문 금액 | 함께 구매 주문 금액 |
-|---|---:|---:|
-| 1 | {widget_stats['widget_1_conversion']:,} | {widget_stats['widget_1_bundle']:,} |
-| 2 | {widget_stats['widget_2_conversion']:,} | {widget_stats['widget_2_bundle']:,} |
-
-### 2️⃣ 프로모션 설정  **`사용중`** 👍
-📈 프로모션설정과 업셀주문의 상관관계
-
-| 기간 | 업셀 주문수 | 하루평균 함께구매주문 건수 |
-|---|---:|---:|
-| {promotion_data['non_promo_period']} | {promotion_data['non_promo_count']}건 | {promotion_data['non_promo_daily']:.2f}건 |
-| {promotion_data['promo_period']} | {promotion_data['promo_count']}건 | **`{promotion_data['promo_daily']:.2f}`건** |
-
-> 💡
-> **프로모션으로 인한 업셀주문 증가율:** **{promotion_data['increased_rate']:.2f}배**
-
-[직접설정 사례 🔗]({promotion_data['direct_link']})
-
-
-### 3️⃣ 위젯 영역 구석구석 활용하기
-- 추가 구매를 유도하는 인상적인 위젯 타이틀 문구 (상세페이지, 장바구니페이지, CTA바 등)
-- 혜택 최대한 보여주어 업셀링 유도
-
-
-### 4️⃣ 위젯 디자인 설정
-- 썸네일비율 & 테두리 디테일 : 예) 세로로 길게, 모서리는 직각
-
-
-# 4. 구독료안내
-월 **~~{subscription_data['old_price']}원~~ {subscription_data['new_price']}원** (부가세별도) **`{subscription_data['plan_name']}`** 
-(월주문수 한도: ~{subscription_data['order_limit']}건) 
-
-`스페셜오퍼`: **한단계 낮은 플랜으로**  
-조건 : 6개월 또는 12개월 선납형태로 금액 묶기  
-6개월 = {subscription_data['six_months']}원  
-12개월 = {subscription_data['twelve_months']}원
-
-🌱 **구독료 - 월평균주문수 기준**  
-최근 한달 주문 수 {subscription_data['recent_order_count']}건 (25.8.18 11:59 기준)  
-
-플랜테이블
-
-**📌 연간 구독 시 12개월간 납부한 구독료로 (주문수 연관없이) 추가요금 없이 구독 가능**
-"""
-    return md
-
-
-if uploaded_file is not None:
-    raw_data = pd.read_csv(uploaded_file)
-
-    # Basic data pre-processing to filter relevant orders
-    raw_data['총 주문 금액'] = pd.to_numeric(raw_data['총 주문 금액'], errors='coerce')
-    raw_data = raw_data[raw_data['총 주문 금액'] > 0]
-
-    # Deduplication keeping up-sell preferential
-    data = raw_data.copy()
-    data = data.sort_values(by=['일반/업셀 구분'], ascending=False)
-    data = data.drop_duplicates(subset=['주문번호'], keep='last')
-
-    raw_data['주문일'] = pd.to_datetime(raw_data['주문일'], errors='coerce')
-    start_date_dt = raw_data['주문일'].min()
-    end_date_dt = raw_data['주문일'].max()
-    period_days = (end_date_dt - start_date_dt).days + 1
-    period_info = f"{start_date_dt.strftime('%y.%m.%d')} ~ {end_date_dt.strftime('%y.%m.%d')} `{period_days}일간`"
-
-    # KPI & basic metrics
-    total_revenue = data['총 주문 금액'].sum()
-    upsell_conversion = data[data['일반/업셀 구분'] == '업셀 상품']['총 주문 금액'].sum()
-    upsell_bundle = raw_data[raw_data['일반/업셀 구분'] == '함께 구매 상품']['총 주문 금액'].sum() if '함께 구매 상품' in raw_data['일반/업셀 구분'].unique() else 0
-    avg_order_value = data['총 주문 금액'].mean()
-    avg_bundle_order_value = raw_data[raw_data['일반/업셀 구분'] == '함께 구매 상품']['총 주문 금액'].mean() if '함께 구매 상품' in raw_data['일반/업셀 구분'].unique() else 0
-    order_items = raw_data.groupby('주문번호').size()
-    avg_items_all = order_items.mean()
-    bundle_orders = raw_data[raw_data['일반/업셀 구분'] == '함께 구매 상품']
-    avg_items_bundle = bundle_orders.groupby('주문번호').size().mean() if not bundle_orders.empty else 0
-
-    # Benchmarks (static or from external config)
-    benchmark_data = {
-        'conversion_rate': (upsell_conversion / total_revenue * 100) if total_revenue else 0,
-        'bundle_rate': (upsell_bundle / total_revenue * 100) if total_revenue else 0,
-        'bundle_order_rate': "82.25%",
-    }
-
-    # Widget statistics example (fill with actual data or dummy)
-    widget_stats = {
-        'avg_recommend_per_customer': 13.3,
-        'recent_period_start': '25.7.19',
-        'recent_period_end': '25.8.17',
-        'single_item_pct': 85.1,
-        'widget_1_conversion': 4656410,
-        'widget_1_bundle': 1361960,
-        'widget_2_conversion': 4442980,
-        'widget_2_bundle': 1075600,
-    }
-
-    # Promotion performance example (fill with actual data or dummy)
-    promotion_data = {
-        'non_promo_period': '1월25일~2월2일, 2월10~11일',
-        'promo_period': '2월 3일 ~ 2월 9일',
-        'non_promo_count': 15,
-        'promo_count': 55,
-        'non_promo_daily': 1.67,
-        'promo_daily': 7.86,
-        'increased_rate': 4.71,
-        'direct_link': 'https://sum37mall.cafe24.com/product/detail.html?product_no=322&cate_no=30&display_group=1',
-    }
-
-    # Subscription info example (fill with actual data or dummy)
-    subscription_data = {
-        'old_price': '800,000',
-        'new_price': '540,000',
-        'plan_name': '엔터프라이즈3',
-        'order_limit': 20000,
-        'six_months': '3,240,000',
-        'twelve_months': '6,480,000',
-        'recent_order_count': 10074,
-    }
-
-    # Generate and show markdown report
-    markdown_report = generate_markdown_report(
-        period_info, total_revenue, upsell_conversion, upsell_bundle,
-        avg_order_value, avg_bundle_order_value, avg_items_all, avg_items_bundle,
-        benchmark_data, widget_stats, promotion_data, subscription_data
+# ----------------------------
+# Sidebar (TOC)
+# ----------------------------
+with st.sidebar:
+    st.header("보고서 목차")
+    st.markdown(
+        """
+- 개요/요약
+- 핵심 지표
+- 상세 분석
+  - 회원 vs 비회원
+  - 객단가 분포(전체/업셀)
+  - 주문별 상품수 분포
+- 자동 생성 인사이트
+- 부록(정의/가정)
+        """
     )
+    st.divider()
+    st.caption("CSV 컬럼 최소 요구: 주문번호, 총 주문 금액, 주문자 아이디, 일반/업셀 구분, 주문일")
 
-    st.markdown("## 📋 보고서 마크다운 미리보기")
-    st.code(markdown_report, language='markdown')
+# ----------------------------
+# Upload
+# ----------------------------
+uploaded_file = st.file_uploader("CSV 파일 업로드", type="csv")
 
-    if st.button("📋 보고서 마크다운 복사"):
-        try:
-            import pyperclip
-            pyperclip.copy(markdown_report)
-            st.success("마크다운 내용이 클립보드에 복사되었습니다!")
-        except Exception:
-            st.info("복사 기능이 지원되지 않으니 직접 마크다운 영역을 복사하세요.")
+# ----------------------------
+# Helpers
+# ----------------------------
+REQUIRED_COLS = ["주문번호", "총 주문 금액", "주문자 아이디", "일반/업셀 구분", "주문일"]
 
-    # Display pie chart for "주문 당 구매품목수"
-    order_item_counts = order_items.value_counts().sort_index()
-    fig, ax = plt.subplots(figsize=(8, 5))
-    bars = ax.bar(order_item_counts.index.astype(str), order_item_counts.values, color='seagreen')
-    ax.set_xlabel('주문 당 상품 개수')
-    ax.set_ylabel('주문 건수')
-    ax.set_title('주문 당 구매품목수 분포')
+def check_columns(df: pd.DataFrame):
+    missing = [c for c in REQUIRED_COLS if c not in df.columns]
+    return missing
+
+def format_money(x):
+    try:
+        return f"{x:,.0f} KRW"
+    except Exception:
+        return "-"
+
+@st.cache_data(show_spinner=False)
+def load_and_prepare(file):
+    df = pd.read_csv(file)
+    miss = check_columns(df)
+    if miss:
+        raise ValueError(f"누락 컬럼: {', '.join(miss)}")
+
+    # typing
+    df["총 주문 금액"] = pd.to_numeric(df["총 주문 금액"], errors="coerce")
+    df["주문일"] = pd.to_datetime(df["주문일"], errors="coerce")
+
+    # 유효 주문만 (금액>0 & 날짜 존재)
+    df = df[(df["총 주문 금액"] > 0) & (df["주문일"].notna())].copy()
+
+    # 중복 주문번호 제거: 업셀 우선 보존
+    data = df.sort_values(by=["일반/업셀 구분"], ascending=False).drop_duplicates(subset=["주문번호"], keep="last").copy()
+
+    # 분석 기간
+    start_dt = df["주문일"].min()
+    end_dt = df["주문일"].max()
+    period_days = int((end_dt - start_dt).days) + 1
+
+    # 회원여부
+    data["회원여부"] = data["주문자 아이디"].apply(lambda x: "Guest" if pd.isna(x) or str(x).strip() == "" else "Member")
+
+    return df, data, start_dt, end_dt, period_days
+
+def price_bucket(series: pd.Series, top_cap=200_000, step=10_000):
+    b = (series // step) * step
+    b = b.apply(lambda x: top_cap if x > top_cap else x)
+    full = pd.Series([i * step for i in range(top_cap // step + 1)])
+    vc = b.value_counts().reindex(full, fill_value=0).sort_index()
+    labels = [f">{top_cap//step}.0" if v == top_cap else f"{v//step}.0" for v in vc.index]
+    return vc, labels, full
+
+def fig_bar(x_idx, y_vals, title, xlabel, ylabel, width=8000):
+    fig, ax = plt.subplots(figsize=(10, 5.6))
+    bars = ax.bar(x_idx, y_vals, width=width)
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_xticks(x_idx)
+    ax.set_xticklabels(x_idx, rotation=45)
     for bar in bars:
-        yval = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width() / 2, yval, int(yval), ha='center', va='bottom')
-    st.pyplot(fig)
+        y = bar.get_height()
+        ax.text(bar.get_x()+bar.get_width()/2, y, f"{y:.0f}" if isinstance(y, (int,float)) else y, ha="center", va="bottom", fontsize=9)
+    ax.margins(x=0.01)
+    return fig
 
-    # Save and provide image download button
-    img_name = 'order_items_distribution.png'
-    fig.savefig(img_name)
-    with open(img_name, "rb") as f:
-        st.download_button("📥 그래프 이미지 다운로드", data=f, file_name=img_name, mime="image/png")
+def fig_pie(labels, values, title):
+    fig, ax = plt.subplots(figsize=(6.8, 6.8))
+    explode = [0.03] * len(values)
+    wedges, texts, autotexts = ax.pie(values, labels=labels, autopct="%1.1f%%",
+                                      startangle=0, explode=explode, pctdistance=0.8, labeldistance=1.05)
+    ax.set_title(title)
+    ax.axis("equal")
+    for t in texts:
+        t.set_fontsize(11)
+    for at in autotexts:
+        at.set_fontsize(10)
+    return fig
 
-    if os.path.exists(img_name):
-        os.remove(img_name)
+def to_html_report(title, period, kpis, summary_lines, insights_lines):
+    # 간단한 자체 HTML 템플릿 (차트 이미지는 Streamlit 내 렌더; 다운로드는 텍스트 보고서 기준)
+    kpi_html = "".join([f"""
+      <div style="border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;background:#fafafa;">
+        <div style="font-size:12px;color:#6b7280">{label}</div>
+        <div style="font-size:18px;font-weight:700">{value}</div>
+      </div>
+    """ for label, value in kpis])
 
+    return f"""
+    <html>
+    <head><meta charset="utf-8"><title>{title}</title></head>
+    <body style="font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,'Apple Color Emoji','Segoe UI Emoji';">
+      <h1 style="margin-bottom:6px;">{title}</h1>
+      <div style="color:#6b7280;">{period}</div>
+
+      <h2>요약</h2>
+      <ul>
+        {''.join(f'<li>{line}</li>' for line in summary_lines)}
+      </ul>
+
+      <h2>핵심 지표</h2>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+        {kpi_html}
+      </div>
+
+      <h2>자동 생성 인사이트</h2>
+      <ul>
+        {''.join(f'<li>{line}</li>' for line in insights_lines)}
+      </ul>
+
+      <hr/>
+      <div style="font-size:12px;color:#6b7280;">
+        ※ 본 보고서는 업로드된 CSV의 유효 주문(금액>0)을 기준으로 자동 생성되었습니다.
+      </div>
+    </body>
+    </html>
+    """
+
+# ----------------------------
+# Main
+# ----------------------------
+if uploaded_file is None:
+    st.info("샘플이 아니라 **실제 주문 내역 CSV**를 업로드하세요. (필수 컬럼: 주문번호, 총 주문 금액, 주문자 아이디, 일반/업셀 구분, 주문일)")
 else:
-    st.write("CSV 파일을 업로드해 주세요.")
+    try:
+        raw_data, data, start_dt, end_dt, period_days = load_and_prepare(uploaded_file)
+
+        # ----------------------------
+        # KPIs
+        # ----------------------------
+        total_revenue = float(data["총 주문 금액"].sum())
+        avg_order_value = float(data["총 주문 금액"].mean()) if len(data) else 0.0
+        total_orders = int(len(data))
+
+        st.markdown('<div class="h2">개요 / 요약</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="report-subtle">분석 기간: <span class="mono">{start_dt.strftime("%Y-%m-%d")} ~ {end_dt.strftime("%Y-%m-%d")}</span> '
+            f'(<span class="mono">{period_days}일</span>)</div>',
+            unsafe_allow_html=True,
+        )
+
+        # 자동 요약 문장
+        share_member = (data["회원여부"].value_counts(normalize=True).get("Member", 0) * 100.0)
+        upsell_orders = data[data["일반/업셀 구분"] == "업셀 상품"]
+        upsell_share = (len(upsell_orders) / total_orders * 100.0) if total_orders else 0.0
+
+        # 가격대 최빈 구간
+        price_counts, price_labels, price_index = price_bucket(data["총 주문 금액"])
+        top_bucket_idx = int(price_counts.values.argmax()) if len(price_counts) else 0
+        top_bucket_label = price_labels[top_bucket_idx] if price_labels else "-"
+
+        summary_lines = [
+            f"총 매출 {format_money(total_revenue)}, 총 주문 {total_orders:,}건, 평균 객단가 {format_money(avg_order_value)}.",
+            f"회원 주문 비중은 약 {share_member:.1f}%. 업셀 주문 비중은 약 {upsell_share:.1f}%.",
+            f"가장 빈도가 높은 결제 금액대는 '{top_bucket_label} 만원대' 구간.",
+        ]
+        st.markdown('<div class="callout">' + "<br/>".join(summary_lines) + "</div>", unsafe_allow_html=True)
+
+        # KPI 그리드
+        st.markdown('<div class="h2">핵심 지표</div>', unsafe_allow_html=True)
+        kpi_items = [
+            ("전체 매출", format_money(total_revenue)),
+            ("평균 객단가 (AOV)", format_money(avg_order_value)),
+            ("총 주문 수", f"{total_orders:,} 건"),
+        ]
+        st.markdown('<div class="kpi-grid">' + "".join(
+            [f'<div class="kpi-card"><div class="kpi-label">{k}</div><div class="kpi-value">{v}</div></div>' for k, v in kpi_items]
+        ) + '</div>', unsafe_allow_html=True)
+
+        # ----------------------------
+        # 상세 분석
+        # ----------------------------
+        st.markdown('<div class="h2">상세 분석</div>', unsafe_allow_html=True)
+
+        # 1) 회원 vs 비회원
+        st.markdown('<div class="h3">1) 회원 vs Guest 주문 비중</div>', unsafe_allow_html=True)
+        member_counts = data["회원여부"].value_counts()
+        st.dataframe(member_counts.rename_axis("구분").to_frame("건수"))
+
+        fig1 = fig_pie(member_counts.index.tolist(), member_counts.values.tolist(), "Order Share (Member vs Guest)")
+        st.pyplot(fig1)
+
+        # 2) 객단가 분포 (전체)
+        st.markdown('<div class="h3">2) 객단가 분포 — 전체 주문</div>', unsafe_allow_html=True)
+        order_counts = price_counts
+        st.dataframe(order_counts.rename_axis("만원대 구간").to_frame("주문 건수"))
+
+        fig2 = fig_bar(price_labels, order_counts.values, "Distribution of Order Prices (All Orders)", "만원대 구간", "건수", width=0.8)
+        st.pyplot(fig2)
+
+        order_pct = (order_counts / order_counts.sum() * 100.0) if order_counts.sum() else order_counts*0
+        fig3 = fig_bar(price_labels, order_pct.values, "Order Price Distribution by % (All Orders)", "만원대 구간", "비중(%)", width=0.8)
+        st.pyplot(fig3)
+
+        # 3) 객단가 분포 (업셀)
+        st.markdown('<div class="h3">3) 객단가 분포 — 업셀 주문</div>', unsafe_allow_html=True)
+        upsell_data = data[data["일반/업셀 구분"] == "업셀 상품"]
+        if upsell_data.empty:
+            st.caption("업셀 주문이 없습니다.")
+        else:
+            up_counts, up_labels, _ = price_bucket(upsell_data["총 주문 금액"])
+            st.dataframe(up_counts.rename_axis("만원대 구간").to_frame("업셀 주문 건수"))
+
+            fig4 = fig_bar(up_labels, up_counts.values, "Distribution of Order Prices (Upsell Orders)", "만원대 구간", "건수", width=0.8)
+            st.pyplot(fig4)
+
+            up_pct = (up_counts / up_counts.sum() * 100.0) if up_counts.sum() else up_counts*0
+            fig5 = fig_bar(up_labels, up_pct.values, "Order Price Distribution by % (Upsell)", "만원대 구간", "비중(%)", width=0.8)
+            st.pyplot(fig5)
+
+        # 4) 주문별 상품수 분포
+        st.markdown('<div class="h3">4) 주문별 상품수 분포</div>', unsafe_allow_html=True)
+        order_items = raw_data.groupby("주문번호").size().reset_index(name="ItemCount")
+        dist = order_items["ItemCount"].value_counts().sort_index()
+        st.dataframe(dist.rename_axis("상품수").to_frame("주문 건수"))
+
+        # 파이(3% 미만 Others)
+        total_item_orders = dist.sum()
+        labels, vals, others_sum = [], [], 0
+        for k, v in dist.items():
+            pct = (v / total_item_orders) * 100 if total_item_orders else 0
+            if pct < 3:
+                others_sum += v
+            else:
+                labels.append(str(k))
+                vals.append(v)
+        if others_sum > 0:
+            labels.append("Others")
+            vals.append(others_sum)
+        fig6 = fig_pie(labels, vals, "Distribution of Items per Order (Pie)")
+        st.pyplot(fig6)
+
+        # 바차트(원본)
+        fig7, ax_items_bar = plt.subplots(figsize=(10, 5.6))
+        bars = ax_items_bar.bar(dist.index.astype(str), dist.values)
+        ax_items_bar.set_xlabel("주문별 상품 수")
+        ax_items_bar.set_ylabel("주문 건수")
+        ax_items_bar.set_title("Distribution of Items per Order (Bar)")
+        for b in bars:
+            y = b.get_height()
+            ax_items_bar.text(b.get_x()+b.get_width()/2, y, int(y), ha="center", va="bottom", fontsize=9)
+        st.pyplot(fig7)
+
+        # ----------------------------
+        # 자동 생성 인사이트 (간단 규칙 기반)
+        # ----------------------------
+        st.markdown('<div class="h2">자동 생성 인사이트</div>', unsafe_allow_html=True)
+        insights = []
+
+        # 회원 비중
+        if share_member >= 70:
+            insights.append(f"회원 비중이 {share_member:.1f}%로 높음 → 회원 등급/리텐션 프로모션 최적화 여지.")
+        elif share_member <= 40:
+            insights.append(f"회원 비중이 {share_member:.1f}%로 낮음 → 간편가입/첫구매 유도 인센티브 검토 필요.")
+
+        # 업셀 비중
+        if upsell_share >= 15:
+            insights.append(f"업셀 주문 비중 {upsell_share:.1f}% → 업셀 구성/위치 유지 혹은 확대 테스트 권장.")
+        elif 0 < upsell_share < 8:
+            insights.append(f"업셀 주문 비중 {upsell_share:.1f}% → 페이지 진입 위치/카피/가격대 재검토 필요.")
+
+        # 최빈 가격대
+        if top_bucket_label not in ("-",):
+            try:
+                bucket_val = float(top_bucket_label.replace(">", ""))  # e.g., '12.0' or '>20.0'
+            except Exception:
+                bucket_val = None
+            if bucket_val is not None and bucket_val <= 5:
+                insights.append("저가 구간 집중 → 번들/목표 AOV 상향 프로모션 고려.")
+            elif bucket_val is not None and bucket_val >= 15:
+                insights.append("고가 구간 비중 ↑ → 고가 제품 리뷰/보증/혜택 강조로 전환 방어.")
+        
+        # 주문별 상품수
+        if not dist.empty:
+            mode_items = dist.idxmax()
+            if mode_items == 1:
+                insights.append("단품 구매가 다수 → 관련 액세서리/보완재 추천 카드 강화.")
+            elif mode_items >= 3:
+                insights.append("다품목 구매 성향 → 묶음/세트 할인 메시지 테스트.")
+
+        if not insights:
+            insights.append("특이점 없음. 데이터 확대 혹은 기간 분할(주/월별) 비교로 추가 패턴 탐색 권장.")
+
+        st.markdown("- " + "\n- ".join(insights))
+
+        # ----------------------------
+        # 부록
+        # ----------------------------
+        st.markdown('<div class="h2">부록: 정의/가정</div>', unsafe_allow_html=True)
+        st.markdown(
+            """
+- **유효 주문**: `총 주문 금액 > 0` & `주문일` 존재
+- **중복 제거**: 동일 `주문번호` 존재 시 `일반/업셀 구분` 기준으로 업셀 우선 보존
+- **가격대 구간**: 1만원 단위, 20만원 초과는 `>20.0`으로 집계
+- **회원여부**: `주문자 아이디` 비어있으면 Guest, 아니면 Member
+            """
+        )
+
+        # ----------------------------
+        # 보고서 다운로드(HTML/Markdown)
+        # ----------------------------
+        st.markdown('<div class="h2">보고서 다운로드</div>', unsafe_allow_html=True)
+
+        period_str = f"{start_dt.strftime('%Y-%m-%d')} ~ {end_dt.strftime('%Y-%m-%d')} ({period_days}일)"
+        html_doc = to_html_report(
+            "주문 리포트 (자동 요약본)",
+            f"분석 기간: {period_str}",
+            kpi_items,
+            summary_lines,
+            insights
+        )
+        st.download_button("요약 보고서 HTML 다운로드", data=html_doc.encode("utf-8"), file_name="order_report_summary.html", mime="text/html")
+
+        md_lines = [
+            "# 주문 리포트 (자동 요약본)",
+            f"- 분석 기간: **{period_str}**",
+            "",
+            "## 요약",
+            *[f"- {s}" for s in summary_lines],
+            "",
+            "## 핵심 지표",
+            *[f"- {k}: {v}" for k, v in kpi_items],
+            "",
+            "## 자동 생성 인사이트",
+            *[f"- {s}" for s in insights],
+            "",
+            "> 본 보고서는 업로드된 CSV의 유효 주문(금액>0)을 기준으로 자동 생성되었습니다.",
+        ]
+        md_text = "\n".join(md_lines)
+        st.download_button("요약 보고서 Markdown 다운로드", data=md_text.encode("utf-8"), file_name="order_report_summary.md", mime="text/markdown")
+
+    except ValueError as ve:
+        st.error(str(ve))
+    except Exception as e:
+        st.exception(e)
